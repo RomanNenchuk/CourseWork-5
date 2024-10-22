@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"
+      integrity="sha512-11t8Q+vY9JlCrr+PveZKTYJq8n7O09Y5X/pk/aMd3vJugSvu4xOunGEUzaADqL3I8cZKE/pBwwCfXzDkRJh2sQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <main>
+      <div class="registration">
+        <form class="form-join" autocomplete="off">
+          <div class="personal-data">
+            <input
+              type="text"
+              id="name"
+              maxlength="8"
+              placeholder="Your name"
+              size="5"
+              required
+            />
+            <input
+              type="password"
+              id="user-password"
+              maxlength="8"
+              placeholder="Your password"
+              size="5"
+              required
+            />
+            <button type="button" class="signout hidden">Sign Out</button>
+          </div>
+          <div class="chat-data">
+            <input
+              type="text"
+              id="room"
+              placeholder="Chat room"
+              size="5"
+              required
+            />
+            <input
+              type="password"
+              id="room-password"
+              maxlength="8"
+              placeholder="Room password"
+              size="5"
+              required
+            />
+          </div>
+          <button id="join" type="submit">Join</button>
+          <img
+            src="./img/settings.png"
+            class="settings-img"
+            height="30px"
+            width="30px"
+            alt="Settings"
+          />
+        </form>
+        <form class="form-find" autocomplete="off">
+          <input
+            type="text"
+            id="findRoomByName"
+            placeholder="Enter room name"
+          />
+          <input
+            type="number"
+            id="findRoomByCount"
+            placeholder="Minimum participants"
+            value="1"
+            min="1"
+          />
+          <img
+            src="./img/search.png"
+            class="search-img"
+            height="30px"
+            width="30px"
+            alt="Search"
+          />
+        </form>
+        <p class="found-rooms"></p>
+        <p class="room-list"></p>
+      </div>
+
+      <div class="chat-container hidden">
+        <ul class="chat-display"></ul>
+        <p class="user-list"></p>
+        <p class="activity"></p>
+        <form class="form-msg" autocomplete="off">
+          <input type="text" id="message" placeholder="Your message" required />
+          <button type="submit">Send</button>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>
