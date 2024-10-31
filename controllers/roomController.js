@@ -39,19 +39,22 @@ export const getAllActiveRooms = async () => {
 // Отримуємо всі кімнати, назва яких містить підрядок roomName, та кількість учасників відповідає participNumber
 export const getRoomsByNameAndCount = async (roomName, participNumber) => {
   try {
-    const rooms = await Room.find({
-      roomName: { $regex: roomName, $options: "i" }, // Пошук кімнат, що містять підрядок roomName (без урахування регістру)
-    }).select("roomName participants");
+    const query = roomName
+      ? { roomName: { $regex: roomName, $options: "i" } } // Якщо є roomName, шукаємо за ним
+      : {}; // Якщо roomName не задано, повертаємо всі кімнати
 
-    // Фільтруємо кімнати за мінімальною кількістю учасників
+    const rooms = await Room.find(query).select("roomName participants");
+
+    // Фільтруємо кімнати за кількістю учасників
     const filteredRooms = rooms.filter(
       (room) => room.participants.length >= participNumber
     );
 
-    // Повертаємо об'єкт з іменем кімнати та кількістю учасників
+    // Повертаємо об'єкт з іменем кімнати, кількістю учасників та активністю
     return filteredRooms.map((room) => ({
       roomName: room.roomName,
       totalParticipants: room.participants.length, // загальна кількість учасників
+      isActive: room.participants.some((participant) => participant.active), // перевіряємо, чи є активні учасники
     }));
   } catch (error) {
     console.error("Помилка при отриманні кімнат з учасниками:", error);
@@ -112,16 +115,32 @@ export const addUserToRoom = async (roomName, userName) => {
 };
 
 // Створити нову кімнату з користувачем
-export const createRoomWithUser = async (roomName, userName, roomPassword) => {
+export const createRoomWithUser = async (
+  roomName,
+  userName,
+  roomPassword,
+  adminEmail
+) => {
   try {
     const newRoom = new Room({
       roomName,
       roomPassword,
       participants: [{ userName, active: true }],
+      adminEmail,
     });
 
     const savedRoom = await newRoom.save();
   } catch (error) {
     console.error("Помилка при створенні кімнати:", error);
+  }
+};
+
+export const getAdminEmail = async (roomName) => {
+  try {
+    const room = await Room.findOne({ roomName });
+    if (room) return room.adminEmail;
+    else return null;
+  } catch (error) {
+    console.error("Помилка при отриманні імейл адміністратора:", error);
   }
 };

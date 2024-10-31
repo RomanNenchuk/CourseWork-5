@@ -16,6 +16,7 @@ import {
   verifyRoomPassword,
   addUserToRoom,
   createRoomWithUser,
+  getAdminEmail,
 } from "../controllers/roomController.js";
 import {
   setMessage,
@@ -28,16 +29,15 @@ const chatSocket = (io) => {
     console.log(`User ${socket.id} connected`);
 
     // відображаємо список активних кімнат (якщо такі є) для користувача, що приєднався
-    const activeRooms = await getAllActiveRooms();
-    if (activeRooms.length) {
-      socket.emit("roomList", {
-        rooms: activeRooms,
-      });
+    const roomInfo = await getRoomsByNameAndCount("", 1);
+
+    if (roomInfo.length) {
+      socket.emit("findRoom", roomInfo);
     }
 
     socket.on(
       "enterRoom",
-      async ({ name, room, userPassword, roomPassword }) => {
+      async ({ name, room, userPassword, roomPassword, adminEmail }) => {
         try {
           const userInfo = await getUserByID(socket.id);
           let prevRoom;
@@ -93,7 +93,7 @@ const chatSocket = (io) => {
           }
           // якщо кімната ще не створена
           else if (!alreadyExists) {
-            await createRoomWithUser(room, name, roomPassword);
+            await createRoomWithUser(room, name, roomPassword, adminEmail);
           }
 
           // Відображення попередніх повідомлень
@@ -108,11 +108,9 @@ const chatSocket = (io) => {
           });
 
           // Оновлення списку кімнат для всіх
-          const activeRooms = await getAllActiveRooms();
-          if (activeRooms.length) {
-            io.emit("roomList", {
-              rooms: activeRooms,
-            });
+          const roomInfo = await getRoomsByNameAndCount("", 1);
+          if (roomInfo.length) {
+            io.emit("findRoom", roomInfo);
           }
 
           // Повідомлення для користувача, що приєднався
@@ -154,11 +152,9 @@ const chatSocket = (io) => {
           users: await getUsersInRoom(user.currentRoom),
         });
 
-        const activeRooms = await getAllActiveRooms();
-        if (activeRooms.length) {
-          io.emit("roomList", {
-            rooms: activeRooms,
-          });
+        const roomInfo = await getRoomsByNameAndCount("", 1);
+        if (roomInfo.length) {
+          socket.emit("findRoom", roomInfo);
         }
 
         console.log(`User ${socket.id} disconnected`);
@@ -169,7 +165,7 @@ const chatSocket = (io) => {
 
     socket.on(
       "verifyPasswords",
-      async ({ name, userPassword, room, roomPassword }) => {
+      async ({ name, userPassword, room, roomPassword, adminEmail }) => {
         // Якщо користувач зареєстрований, перевіряємо пароль
         if (await isRegistered(name)) {
           if (!(await verifyUserPassword(name, userPassword))) {
@@ -193,11 +189,15 @@ const chatSocket = (io) => {
             socket.emit("wrongPassword", { message: "room" });
             return;
           } else {
-            socket.emit("passwordConfirmed", { message: "room" });
+            socket.emit("passwordConfirmed", { message: "room", admin: false });
           }
         } else {
           // Якщо кімната не існує, то вважаємо її пароль правильний
-          socket.emit("passwordConfirmed", { message: "room" });
+          if (adminEmail) {
+            socket.emit("passwordConfirmed", { message: "room", admin: true });
+            return;
+          }
+          socket.emit("askForEmail");
         }
       }
     );
@@ -235,6 +235,10 @@ const chatSocket = (io) => {
     socket.on("findRoom", async ({ roomName, participNumber }) => {
       const roomInfo = await getRoomsByNameAndCount(roomName, participNumber);
       socket.emit("findRoom", roomInfo);
+    });
+
+    socket.on("getAdminEmail", async (chatRoom) => {
+      socket.emit("getAdminEmail", await getAdminEmail(chatRoom));
     });
   });
 };

@@ -15,45 +15,29 @@
   </head>
   <body>
     <main>
-      <div class="registration">
-        <form class="form-join" autocomplete="off">
-          <div class="personal-data">
-            <input
-              type="text"
-              id="name"
-              maxlength="8"
-              placeholder="Your name"
-              size="5"
-              required
+      <div class="container">
+        <aside class="rooms">
+          <form class="form-find" autocomplete="off">
+            <div class="room-configure">
+              <label for="findRoomByName">Enter room name:</label>
+              <input type="text" id="findRoomByName" />
+              <label for="findRoomByCount">Minimum participants:</label>
+              <input type="number" id="findRoomByCount" value="1" min="1" />
+            </div>
+            <img
+              src="./img/search.png"
+              class="search-img"
+              height="30px"
+              width="30px"
+              alt="Search"
             />
-            <input
-              type="password"
-              id="user-password"
-              maxlength="8"
-              placeholder="Your password"
-              size="5"
-              required
-            />
-            <button type="button" class="signout hidden">Sign Out</button>
-          </div>
-          <div class="chat-data">
-            <input
-              type="text"
-              id="room"
-              placeholder="Chat room"
-              size="5"
-              required
-            />
-            <input
-              type="password"
-              id="room-password"
-              maxlength="8"
-              placeholder="Room password"
-              size="5"
-              required
-            />
-          </div>
-          <button id="join" type="submit">Join</button>
+          </form>
+          <h2>Rooms list:</h2>
+          <ul class="list"></ul>
+          <p class="found-rooms"></p>
+          <p class="room-list"></p>
+        </aside>
+        <div class="chat">
           <img
             src="./img/settings.png"
             class="settings-img"
@@ -61,40 +45,108 @@
             width="30px"
             alt="Settings"
           />
-        </form>
-        <form class="form-find" autocomplete="off">
-          <input
-            type="text"
-            id="findRoomByName"
-            placeholder="Enter room name"
-          />
-          <input
-            type="number"
-            id="findRoomByCount"
-            placeholder="Minimum participants"
-            value="1"
-            min="1"
-          />
-          <img
-            src="./img/search.png"
-            class="search-img"
-            height="30px"
-            width="30px"
-            alt="Search"
-          />
-        </form>
-        <p class="found-rooms"></p>
-        <p class="room-list"></p>
-      </div>
+          <div class="registration">
+            <form class="form-join" autocomplete="off">
+              <div class="regularUser">
+                <div class="personal-data">
+                  <input
+                    type="text"
+                    id="name"
+                    maxlength="8"
+                    placeholder="Your name"
+                    size="5"
+                    required
+                  />
+                  <input
+                    type="password"
+                    id="user-password"
+                    maxlength="8"
+                    placeholder="Your password"
+                    size="5"
+                    required
+                  />
 
-      <div class="chat-container hidden">
-        <ul class="chat-display"></ul>
-        <p class="user-list"></p>
-        <p class="activity"></p>
-        <form class="form-msg" autocomplete="off">
-          <input type="text" id="message" placeholder="Your message" required />
-          <button type="submit">Send</button>
-        </form>
+                  <button type="button" class="signout hidden">Sign Out</button>
+                </div>
+                <div class="chat-data">
+                  <input
+                    type="text"
+                    id="room"
+                    placeholder="Chat room"
+                    size="5"
+                    required
+                  />
+                  <div class="room-password-container">
+                    <img
+                      src="./img/help.png"
+                      class="help-icon"
+                      alt="Help"
+                      width="30px"
+                      height="30px"
+                    />
+                    <input
+                      type="password"
+                      id="room-password"
+                      maxlength="8"
+                      placeholder="Room password"
+                      size="5"
+                      required
+                    />
+                  </div>
+                </div>
+                <button id="join" type="submit">Join</button>
+              </div>
+              <div class="adminEmail hidden">
+                <div class="adminEmail-header">
+                  <span>Please, provide your email </span>
+                  <div class="image-container">
+                    <img
+                      src="./img/question.png"
+                      height="30px"
+                      width="30px"
+                      class="email-help"
+                      alt="Help"
+                    />
+                  </div>
+                </div>
+                <input
+                  type="email"
+                  id="email"
+                  style="width: 42%"
+                  autocomplete="off"
+                />
+              </div>
+            </form>
+            <div class="email-help-container hidden">
+              <span class="help-caption hidden">
+                Cannot get to the room? Contact the admin by this email:
+              </span>
+              <span class="help-email"></span>
+            </div>
+          </div>
+
+          <div class="chat-container hidden">
+            <ul class="chat-display"></ul>
+            <p class="user-list"></p>
+            <p class="activity"></p>
+            <form class="form-msg" autocomplete="off">
+              <input
+                type="text"
+                id="message"
+                placeholder="Your message"
+                required
+              />
+              <img
+                src="./img/send.png"
+                height="25px"
+                width="30px"
+                class="send"
+                id="send"
+                alt="Send"
+              />
+            </form>
+          </div>
+        </div>
       </div>
     </main>
   </body>

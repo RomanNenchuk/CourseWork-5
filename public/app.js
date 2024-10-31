@@ -9,7 +9,7 @@ const userPassword = document.getElementById("user-password");
 const roomPassword = document.getElementById("room-password");
 const activity = document.querySelector(".activity");
 const usersList = document.querySelector(".user-list");
-const roomList = document.querySelector(".room-list");
+const roomList = document.querySelector(".list");
 const foundRooms = document.querySelector(".found-rooms");
 const formFind = document.querySelector(".form-find");
 const chatDisplay = document.querySelector(".chat-display");
@@ -21,16 +21,37 @@ const joinButton = document.getElementById("join");
 const findButton = document.getElementById("find");
 const findRoomByName = document.getElementById("findRoomByName");
 const findRoomByCount = document.getElementById("findRoomByCount");
+const registrationBar = document.querySelector(".registration");
+const adminEmail = document.querySelector(".adminEmail");
+const email = document.getElementById("email");
+const sendMessageForm = document.querySelector(".form-msg");
+const helpIcon = document.querySelector(".help-icon");
+const emailHelpContainer = document.querySelector(".email-help-container");
+const receivedAdminEmail = document.querySelector(".help-email");
+const helpCaption = document.querySelector(".help-caption");
 
-let switchElements = [
-  chatContainer,
-  userPassword,
-  roomPassword,
-  roomList,
-  foundRooms,
-  joinButton,
-  formFind,
-];
+helpIcon.addEventListener("click", getAdminEmail);
+
+function getAdminEmail() {
+  if (chatRoom.value) {
+    socket.emit("getAdminEmail", chatRoom.value);
+  } else {
+    alert("Enter the room name first");
+  }
+}
+
+socket.on("getAdminEmail", (email) => {
+  emailHelpContainer.classList.remove("hidden");
+  if (email) {
+    helpCaption.classList.remove("hidden");
+    receivedAdminEmail.innerText = email;
+  } else {
+    helpCaption.classList.add("hidden");
+    receivedAdminEmail.innerText = "No such room found";
+  }
+});
+
+let switchElements = [registrationBar, chatContainer];
 
 function switchOptions() {
   switchElements.forEach((element) => element.classList.toggle("hidden"));
@@ -48,10 +69,7 @@ const hideErrors = () => {
   userPassword.classList.remove("error");
 };
 
-const sendMessage = (e) => {
-  // bc we might submit a form that has our message, and we don't want to reload a page
-  // and preventDefault allows to submit a form without reloading a page
-  e.preventDefault();
+const sendMessage = () => {
   if (nameInput.value && msgInput.value && chatRoom.value) {
     socket.emit("message", {
       name: nameInput.value,
@@ -63,15 +81,17 @@ const sendMessage = (e) => {
   msgInput.focus();
 };
 
-function enterRoom() {
+function enterRoom(isAdmin) {
   if (nameInput.value && chatRoom.value) {
     socket.emit("enterRoom", {
       name: nameInput.value,
       room: chatRoom.value,
       userPassword: userPassword.value,
       roomPassword: roomPassword.value,
+      adminEmail: isAdmin ? email.value : null,
     });
   }
+  emailHelpContainer.classList.add("hidden");
 }
 
 function verifyPasswords(e) {
@@ -87,12 +107,23 @@ function verifyPasswords(e) {
       room: chatRoom.value,
       userPassword: userPassword.value,
       roomPassword: roomPassword.value,
+      adminEmail: email.value,
     });
+    console.log(adminEmail);
+    console.log(email.value);
   }
 }
 
-document.querySelector(".form-msg").addEventListener("submit", sendMessage);
+sendMessageForm.addEventListener("submit", (e) => {
+  // bc we might submit a form that has our message, and we don't want to reload a page
+  // and preventDefault allows to submit a form without reloading a page
+  e.preventDefault();
+  sendMessage();
+});
 
+document.getElementById("send").addEventListener("click", () => {
+  sendMessage();
+});
 document
   .querySelector(".form-join")
   .addEventListener("submit", verifyPasswords);
@@ -161,7 +192,7 @@ socket.on("userList", ({ users }) => {
 });
 
 socket.on("roomList", ({ rooms }) => {
-  showRooms(rooms);
+  // showRooms(rooms);
 });
 
 socket.on("wrongPassword", (data) => {
@@ -180,32 +211,41 @@ socket.on("passwordConfirmed", (data) => {
     if (!userPassword.classList.contains("hidden")) {
       signOut.classList.remove("hidden");
       userPassword.classList.add("hidden");
-      switchElements[1] = signOut;
+      // switchElements[1] = signOut;
     }
-    settings.removeEventListener("click", switchOptions);
-    settings.addEventListener("click", switchOptions);
   }
   // коли пройшла автентифікація кімнати
   if (data.message === "room") {
     switchOptions();
     hideErrors();
-    enterRoom();
+    enterRoom(data.admin);
+  }
+  if (data.admin) {
+    adminEmail.classList.add("hidden");
   }
 });
 
 socket.on("findRoom", (roomInfo) => {
-  foundRooms.textContent = "";
+  roomList.textContent = "";
   if (roomInfo.length) {
-    foundRooms.innerHTML = "<em>Found rooms: </em>";
     roomInfo.forEach((room, i) => {
-      foundRooms.textContent += ` ${room.roomName} (${room.totalParticipants} participants)`;
-      if (roomInfo.length > 1 && i !== roomInfo.length - 1) {
-        foundRooms.textContent += ", ";
+      const li = document.createElement("li");
+      li.textContent = `${room.roomName} (${room.totalParticipants} participants)`;
+      if (room.isActive) {
+        li.classList.add("active");
       }
+      li.addEventListener("click", () => {
+        chatRoom.value = room.roomName;
+      });
+      roomList.appendChild(li);
     });
   } else {
     foundRooms.innerHTML = "No such rooms found";
   }
+});
+
+socket.on("askForEmail", () => {
+  adminEmail.classList.remove("hidden");
 });
 
 function findRooms(e) {
@@ -233,13 +273,20 @@ function showUsers(users) {
 
 function showRooms(rooms) {
   roomList.textContent = "";
+  console.log("Hello");
+
   if (rooms) {
-    roomList.innerHTML = "<em>Active rooms: </em>";
+    // roomList.innerHTML = "<em>Active rooms: </em>";
     rooms.forEach((room, i) => {
-      roomList.textContent += ` ${room}`;
-      if (rooms.length > 1 && i !== rooms.length - 1) {
-        roomList.textContent += ", ";
-      }
+      const li = document.createElement("li");
+      li.innerText = room;
+      console.log(`on room: ${li.innerText}`);
+      li.addEventListener("click", () => {
+        chatRoom.innerText = li.innerText;
+        console.log(`Clicked on room: ${li.innerText}`);
+      });
+      roomList.appendChild(li);
+      // if (i >= 10) return;
     });
   }
 }

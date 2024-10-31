@@ -17,6 +17,10 @@ const roomSchema = new Schema({
       active: { type: Boolean, required: true },
     },
   ],
+  adminEmail: {
+    type: String,
+    required: false,
+  },
 });
 
 const Room = mongoose.model("Room", roomSchema);
