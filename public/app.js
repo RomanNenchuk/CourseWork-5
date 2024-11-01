@@ -1,6 +1,7 @@
 // Browser has a built in web socket class
 // It is instantiated by the URL that points to the server, but we use web socket protocol
-const socket = io("ws://localhost:3500");
+// const socket = io("ws://localhost:3500");
+const socket = io();
 
 const msgInput = document.getElementById("message");
 const nameInput = document.getElementById("name");
@@ -81,6 +82,10 @@ const sendMessage = () => {
   msgInput.focus();
 };
 
+const deleteMsg = (room, id) => {
+  socket.emit("deleteMessage", { room, id });
+};
+
 function enterRoom(isAdmin) {
   if (nameInput.value && chatRoom.value) {
     socket.emit("enterRoom", {
@@ -137,9 +142,16 @@ msgInput.addEventListener("keypress", () => {
 
 // Listen for messages that we receive from server
 
+socket.on("deleteMessage", (id) => {
+  const temp = document.getElementById(id);
+  if (temp) {
+    temp.classList.add("hidden");
+  }
+});
+
 socket.on("message", (data) => {
   activity.textContent = "";
-  const { name, text, time } = data;
+  const { name, text, time, _id } = data;
   const li = document.createElement("li");
   li.className = "post";
   if (name === nameInput.value) li.className = "post post-right";
@@ -149,15 +161,36 @@ socket.on("message", (data) => {
     li.innerHTML = `<div class="post-header ${
       name === nameInput.value ? "post-user" : "post-reply"
     }">
-        <span class="post-header-name">${name}</span> 
+        <span class="post-header-name">${name}</span>
+        ${
+          name === nameInput.value
+            ? `<span class="delete-button">
+              <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="16" height="16" viewBox="0 0 30 30"
+                style="fill:#FFFFFF;">
+                <path d="M 14.984375 2.4863281 A 1.0001 1.0001 0 0 0 14 3.5 L 14 4 L 8.5 4 A 1.0001 1.0001 0 0 0 7.4863281 5 L 6 5 A 1.0001 1.0001 0 1 0 6 7 L 24 7 A 1.0001 1.0001 0 1 0 24 5 L 22.513672 5 A 1.0001 1.0001 0 0 0 21.5 4 L 16 4 L 16 3.5 A 1.0001 1.0001 0 0 0 14.984375 2.4863281 z M 6 9 L 7.7929688 24.234375 C 7.9109687 25.241375 8.7633438 26 9.7773438 26 L 20.222656 26 C 21.236656 26 22.088031 25.241375 22.207031 24.234375 L 24 9 L 6 9 z"></path>
+              </svg>
+            </span>`
+            : ""
+        }         
         <span>${time}</span> 
         </div>
-        <div class="post-text">${text}</div>`;
+        <div class="post-text">${text}
+        </div>`;
+    li.id = _id;
   } else {
     // Admin messages
     li.innerHTML = `<div class="post-text">${text}</div>`;
   }
   document.querySelector(".chat-display").appendChild(li);
+
+  const deleteButton = li.querySelector(".delete-button");
+  if (deleteButton) {
+    deleteButton.addEventListener("click", () => {
+      li.classList.add("hidden");
+      deleteMsg(chatRoom.value, _id);
+    });
+  }
+
   // прогортаємо список вниз по максимуму
   chatDisplay.scrollTop = chatDisplay.scrollHeight;
 });
@@ -165,6 +198,7 @@ socket.on("message", (data) => {
 socket.on("roomMessages", (messages) => {
   const listener = socket.listeners("message")[0]; // Отримуємо перший (і єдиний) слухач
   if (listener) {
+    console.log(messages);
     messages.forEach((message) => {
       listener(message);
     });

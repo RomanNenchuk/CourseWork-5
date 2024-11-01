@@ -21,6 +21,7 @@ import {
 import {
   setMessage,
   getPrevMessages,
+  deleteMessage,
 } from "../controllers/messageController.js";
 import { buildMsg } from "../utils/messageBuilder.js";
 
@@ -209,14 +210,19 @@ const chatSocket = (io) => {
         if (userInfo) {
           const room = userInfo.currentRoom;
           const msg = buildMsg(name, text);
-          await setMessage(msg, room);
+          const msgID = await setMessage(msg, room);
           if (room) {
-            io.to(room).emit("message", msg);
+            io.to(room).emit("message", { ...msg, _id: msgID });
           }
         }
       } catch (error) {
         console.error("Помилка при обробці повідомлення:", error);
       }
+    });
+
+    socket.on("deleteMessage", async ({ room, id }) => {
+      deleteMessage(room, id);
+      io.to(room).emit("deleteMessage", id);
     });
 
     // Обробка активності (набирання тексту)

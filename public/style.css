@@ -319,6 +319,18 @@ button {
   cursor: pointer;
 }
 
+.delete-button {
+  display: inline-block;
+  padding: 0;
+  background-color: #000;
+  border-radius: 50%;
+}
+
+.delete-button svg:hover {
+  background-color: #666666;
+  border-radius: 50%;
+}
+
 .activity {
   font-style: italic;
 }

@@ -5,11 +5,19 @@ import { fileURLToPath } from "url";
 import chatSocket from "./sockets/chatSocket.js";
 import mongoose from "mongoose";
 import Room from "./models/Room.js";
+import { program } from "commander";
+
+program
+  .option("-h, --host <server address>", "server address")
+  .option("-p, --port <server port>", "server port number");
+
+program.parse(process.argv);
+const options = program.opts();
+const HOST = options.host || "127.0.0.1";
+const PORT = options.port || 3500;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const PORT = process.env.PORT || 3500;
 
 const app = express();
 
@@ -26,7 +34,7 @@ mongoose
   .catch((err) => console.log(err));
 app.use(express.static(path.join(__dirname, "public")));
 
-const expressServer = app.listen(PORT, () =>
+const expressServer = app.listen(PORT, HOST, () =>
   console.log(`Listening on port ${PORT}`)
 );
 
