@@ -28,7 +28,7 @@ main {
   padding: 0 30px;
   column-gap: 20px;
   margin: 0 auto;
-  width: 70%;
+  min-width: 90%;
 }
 
 .rooms {
@@ -93,12 +93,14 @@ form {
   width: 100%;
 }
 
-.form-msg {
+.form-msg,
+.form-edit {
   width: 100%;
   align-items: center;
 }
 
-#send {
+#send,
+#apply-change {
   margin-left: 10px;
   cursor: pointer;
 }
@@ -124,6 +126,7 @@ form {
 .chat-data {
   display: flex;
   flex-direction: column;
+  row-gap: 5px;
   width: 100%;
 }
 
@@ -177,7 +180,8 @@ form {
 #room,
 #user-password,
 #room-password,
-#message {
+#message,
+#updatedMessage {
   width: 100%;
 }
 
@@ -326,7 +330,8 @@ button {
   border-radius: 50%;
 }
 
-.delete-button svg:hover {
+.delete-button svg:hover,
+.edit-button svg:hover {
   background-color: #666666;
   border-radius: 50%;
 }

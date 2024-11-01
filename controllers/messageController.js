@@ -4,22 +4,24 @@ import Message from "../models/RoomMessages.js";
 export const setMessage = async (msg, room) => {
   try {
     const roomMessages = await Message.findOne({ room });
-    let roomID;
+    let messageID;
     if (roomMessages) {
       roomMessages.messages.push({
         name: msg.name,
         text: msg.text,
         time: msg.time,
       });
-      roomID = await roomMessages.save();
+      await roomMessages.save();
+      messageID = roomMessages.messages[roomMessages.messages.length - 1]._id;
     } else {
       const newRoom = new Message({
         room,
         messages: [msg],
       });
-      roomID = await newRoom.save();
+      const savedRoom = await newRoom.save();
+      messageID = savedRoom.messages[0]._id;
     }
-    return roomID;
+    return messageID;
   } catch (error) {
     console.error("Помилка при записі повідомлення в БД:", error);
   }
@@ -42,11 +44,29 @@ export const getPrevMessages = async (room) => {
 export const deleteMessage = async (room, id) => {
   try {
     const updatedMessage = await Message.findOneAndUpdate(
-      { "messages._id": id }, // Знаходимо повідомлення за _id
-      { $set: { "messages.$.deleted": true } }, // Позначаємо його як видалене
-      { new: true } // Повертаємо оновлений документ
+      { "messages._id": id },
+      { $set: { "messages.$.deleted": true } },
+      { new: true }
     );
   } catch (error) {
     console.error("Помилка при видаленні повідомлення:", error);
+  }
+  ``;
+};
+
+export const updateMessage = async (room, id, updatedMessage) => {
+  try {
+    const newMessage = await Message.findOneAndUpdate(
+      { "messages._id": id },
+      { $set: { "messages.$.text": updatedMessage } },
+      { new: true }
+    );
+
+    if (!newMessage) {
+      console.error("Повідомлення не знайдено для оновлення");
+      return null;
+    }
+  } catch (error) {
+    console.error("Помилка при редагуванні повідомлення:", error);
   }
 };

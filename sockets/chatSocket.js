@@ -22,6 +22,7 @@ import {
   setMessage,
   getPrevMessages,
   deleteMessage,
+  updateMessage,
 } from "../controllers/messageController.js";
 import { buildMsg } from "../utils/messageBuilder.js";
 
@@ -210,9 +211,9 @@ const chatSocket = (io) => {
         if (userInfo) {
           const room = userInfo.currentRoom;
           const msg = buildMsg(name, text);
-          const msgID = await setMessage(msg, room);
+          const objID = await setMessage(msg, room);
           if (room) {
-            io.to(room).emit("message", { ...msg, _id: msgID });
+            io.to(room).emit("message", { ...msg, _id: objID._id });
           }
         }
       } catch (error) {
@@ -222,7 +223,12 @@ const chatSocket = (io) => {
 
     socket.on("deleteMessage", async ({ room, id }) => {
       deleteMessage(room, id);
-      io.to(room).emit("deleteMessage", id);
+      socket.broadcast.to(room).emit("deleteMessage", id);
+    });
+
+    socket.on("updateMessage", async ({ room, id, updatedMsg }) => {
+      updateMessage(room, id, updatedMsg);
+      socket.broadcast.to(room).emit("updateMessage", id, updatedMsg);
     });
 
     // Обробка активності (набирання тексту)
