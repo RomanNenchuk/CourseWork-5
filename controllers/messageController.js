@@ -58,7 +58,9 @@ export const updateMessage = async (room, id, updatedMessage) => {
   try {
     const newMessage = await Message.findOneAndUpdate(
       { "messages._id": id },
-      { $set: { "messages.$.text": updatedMessage } },
+      {
+        $set: { "messages.$.text": updatedMessage, "messages.$.edited": true },
+      },
       { new: true }
     );
 

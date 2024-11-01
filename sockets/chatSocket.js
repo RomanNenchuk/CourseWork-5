@@ -228,7 +228,7 @@ const chatSocket = (io) => {
 
     socket.on("updateMessage", async ({ room, id, updatedMsg }) => {
       updateMessage(room, id, updatedMsg);
-      socket.broadcast.to(room).emit("updateMessage", id, updatedMsg);
+      io.to(room).emit("updateMessage", id, updatedMsg);
     });
 
     // Обробка активності (набирання тексту)

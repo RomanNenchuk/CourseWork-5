@@ -18,7 +18,6 @@ const chatContainer = document.querySelector(".chat-container");
 const signOut = document.querySelector(".signout");
 const settings = document.querySelector(".settings-img");
 const search = document.querySelector(".search-img");
-const joinButton = document.getElementById("join");
 const findButton = document.getElementById("find");
 const findRoomByName = document.getElementById("findRoomByName");
 const findRoomByCount = document.getElementById("findRoomByCount");
@@ -106,12 +105,7 @@ function enterRoom(isAdmin) {
 
 function verifyPasswords(e) {
   e.preventDefault();
-  if (
-    nameInput.value &&
-    chatRoom.value &&
-    userPassword.value &&
-    roomPassword.value
-  ) {
+  if (nameInput.value && chatRoom.value && userPassword.value) {
     socket.emit("verifyPasswords", {
       name: nameInput.value,
       room: chatRoom.value,
@@ -154,13 +148,24 @@ socket.on("updateMessage", (id, updatedMessage) => {
     const postTextDiv = liElement.querySelector(".post-text");
     if (postTextDiv) {
       postTextDiv.innerText = updatedMessage;
+      renderEditedLabel(liElement);
     }
   }
 });
 
+function renderEditedLabel(liElement) {
+  let editedLabel = liElement.querySelector(".edited-label");
+  if (!editedLabel) {
+    const editedLabel = document.createElement("span");
+    editedLabel.classList.add("edited-label");
+    editedLabel.textContent = "edited";
+    liElement.appendChild(editedLabel);
+  }
+}
+
 socket.on("message", (data) => {
   activity.textContent = "";
-  const { name, text, time, _id } = data;
+  const { name, text, time, _id, edited } = data;
   const li = document.createElement("li");
   li.className = "post";
   if (name === nameInput.value) li.className = "post post-right";
@@ -193,7 +198,11 @@ socket.on("message", (data) => {
   } else {
     // Admin messages
     li.innerHTML = `<div class="post-text">${text}</div>`;
+    li.classList.add("admin-message");
   }
+
+  if (edited) renderEditedLabel(li);
+
   document.querySelector(".chat-display").appendChild(li);
 
   const deleteButton = li.querySelector(".delete-button");
@@ -221,7 +230,7 @@ socket.on("message", (data) => {
             id: _id,
             updatedMsg: updatedMsgInput.value,
           });
-          postTextDiv.innerText = updatedMsgInput.value;
+          // postTextDiv.innerText = updatedMsgInput.value;
           updatedMsgInput.value = "";
           editMessageForm.classList.add("hidden");
           sendMessageForm.classList.remove("hidden");

@@ -8,6 +8,7 @@ const messageSchema = new mongoose.Schema({
       text: { type: String, required: true },
       time: { type: String, required: true },
       deleted: { type: Boolean, default: false },
+      edited: { type: Boolean, default: false },
     },
   ],
 });
