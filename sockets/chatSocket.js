@@ -7,6 +7,7 @@ import {
   setUserActivate,
   setUserUnactivate,
   updatePublicKey,
+  getPublicKey,
 } from "../controllers/userController.js";
 import {
   getUsersInRoom,
@@ -106,7 +107,8 @@ const chatSocket = (io) => {
           else if (!alreadyExists) {
             console.log("Ahaaaaaaaaaaaaaaaa!! Created Room");
             await createRoomWithUser(room, name, roomPassword, adminEmail);
-            socket.emit("createSymmetricKey", true);
+            const publicKey = await getPublicKey(name);
+            socket.emit("createSymmetricKey", true, publicKey);
           }
 
           // Відображення попередніх повідомлень, якщо користувач має приватний ключ

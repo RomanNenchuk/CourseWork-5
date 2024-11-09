@@ -139,3 +139,13 @@ export const updatePublicKey = async (userName, newPublicKey) => {
     throw error;
   }
 };
+
+export const getPublicKey = async (userName) => {
+  try {
+    const user = await User.findOne({ name: userName });
+    return user ? user.publicKey : null;
+  } catch (error) {
+    console.error("Error fetching public key:", error);
+    return null;
+  }
+};

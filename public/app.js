@@ -390,7 +390,7 @@ async function enterRoom(isAdmin) {
   emailHelpContainer.classList.add("hidden");
 }
 
-socket.on("createSymmetricKey", async (isAdmin) => {
+socket.on("createSymmetricKey", async (isAdmin, userPublicKey) => {
   let publicKey;
   if (!(await checkPrivateKey())) {
     publicKey = await generateKeyPair();
@@ -398,6 +398,8 @@ socket.on("createSymmetricKey", async (isAdmin) => {
     const userName = nameInput.value;
     const roomName = chatRoom.value;
     socket.emit("updateKeys", { userName, publicKey, roomName });
+  } else {
+    publicKey = userPublicKey;
   }
 
   // якщо кімната не існує, і її створюють
