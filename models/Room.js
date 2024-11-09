@@ -15,6 +15,7 @@ const roomSchema = new Schema({
     {
       userName: { type: String, required: true },
       active: { type: Boolean, required: true },
+      encryptedSymmetricKey: { type: String, required: false },
     },
   ],
   adminEmail: {

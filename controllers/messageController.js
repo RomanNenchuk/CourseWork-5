@@ -9,6 +9,7 @@ export const setMessage = async (msg, room) => {
       roomMessages.messages.push({
         name: msg.name,
         text: msg.text,
+        iv: msg.iv,
         time: msg.time,
       });
       await roomMessages.save();
@@ -54,12 +55,16 @@ export const deleteMessage = async (room, id) => {
   ``;
 };
 
-export const updateMessage = async (room, id, updatedMessage) => {
+export const updateMessage = async (room, id, updatedMessage, iv) => {
   try {
     const newMessage = await Message.findOneAndUpdate(
       { "messages._id": id },
       {
-        $set: { "messages.$.text": updatedMessage, "messages.$.edited": true },
+        $set: {
+          "messages.$.text": updatedMessage,
+          "messages.$.iv": iv,
+          "messages.$.edited": true,
+        },
       },
       { new: true }
     );
@@ -68,6 +73,8 @@ export const updateMessage = async (room, id, updatedMessage) => {
       console.error("Повідомлення не знайдено для оновлення");
       return null;
     }
+
+    return newMessage; // Повертаємо оновлене повідомлення, якщо потрібно
   } catch (error) {
     console.error("Помилка при редагуванні повідомлення:", error);
   }

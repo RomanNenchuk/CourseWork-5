@@ -36,6 +36,259 @@ const applyChangeBtn = document.getElementById("apply-change");
 
 helpIcon.addEventListener("click", getAdminEmail);
 
+let publicKey;
+
+async function checkPrivateKey() {
+  if (localStorage.getItem(nameInput.value)) {
+    return true;
+  }
+  return false;
+}
+
+async function generateKeyPair() {
+  const keyPair = await window.crypto.subtle.generateKey(
+    {
+      name: "RSA-OAEP",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256",
+    },
+    true,
+    ["encrypt", "decrypt"]
+  );
+
+  // Експортуємо та зберігаємо публічний ключ
+  const publicKey = await window.crypto.subtle.exportKey(
+    "spki",
+    keyPair.publicKey
+  );
+  const publicKeyBase64 = btoa(
+    String.fromCharCode(...new Uint8Array(publicKey))
+  );
+
+  // Експортуємо та зберігаємо приватний ключ у localStorage
+  const privateKey = await window.crypto.subtle.exportKey(
+    "pkcs8",
+    keyPair.privateKey
+  );
+  const privateKeyBase64 = btoa(
+    String.fromCharCode(...new Uint8Array(privateKey))
+  );
+  localStorage.setItem(nameInput.value, privateKeyBase64);
+
+  console.log("Public Key (Base64):", publicKeyBase64);
+  console.log("Private Key saved to localStorage.");
+
+  return publicKeyBase64;
+}
+
+async function generateSymmetricKey() {
+  // Генерація 256-бітного симетричного ключа (AES)
+  const symmetricKey = await crypto.subtle.generateKey(
+    {
+      name: "AES-GCM",
+      length: 256, // 256-бітний ключ
+    },
+    true, // Дозволити експортування ключа
+    ["encrypt", "decrypt"] // Операції, які можна здійснювати з цим ключем
+  );
+
+  // Експортуємо ключ в форматі raw
+  const exportedKey = await crypto.subtle.exportKey("raw", symmetricKey);
+
+  // Конвертуємо масив байтів у Base64
+  const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
+
+  // Зберігаємо ключ з урахуванням кімнати
+  localStorage.setItem(chatRoom.value, keyBase64);
+  return keyBase64;
+}
+
+// Імпорт публічного ключа з Base64 у формат CryptoKey
+async function importPublicKey(publicKeyBase64) {
+  const binaryDerString = window.atob(publicKeyBase64);
+  const binaryDer = str2ab(binaryDerString);
+
+  return await crypto.subtle.importKey(
+    "spki",
+    binaryDer,
+    {
+      name: "RSA-OAEP",
+      hash: "SHA-256",
+    },
+    true,
+    ["encrypt"]
+  );
+}
+
+async function importSymmetricKey(base64Key) {
+  const rawKey = Uint8Array.from(atob(base64Key), (c) => c.charCodeAt(0));
+  return await crypto.subtle.importKey(
+    "raw",
+    rawKey,
+    { name: "AES-GCM" },
+    true,
+    ["encrypt", "decrypt"]
+  );
+}
+
+// Функція для перетворення рядка в масив байт
+function str2ab(str) {
+  const buf = new ArrayBuffer(str.length);
+  const bufView = new Uint8Array(buf);
+  for (let i = 0; i < str.length; i++) {
+    bufView[i] = str.charCodeAt(i);
+  }
+  return buf;
+}
+
+async function encryptSymmetricKeyWithPublicKey(
+  base64SymmetricKey,
+  base64PublicKey
+) {
+  // Експортуємо публічний ключ з Base64 в CryptoKey
+
+  const publicKey = await importPublicKeyFromBase64(base64PublicKey);
+
+  // Конвертуємо Base64 симетричного ключа в бінарний формат
+  const symmetricKeyBuffer = Uint8Array.from(atob(base64SymmetricKey), (c) =>
+    c.charCodeAt(0)
+  );
+
+  // Шифруємо симетричний ключ за допомогою публічного ключа (RSA)
+  const encryptedKey = await crypto.subtle.encrypt(
+    {
+      name: "RSA-OAEP",
+    },
+    publicKey,
+    symmetricKeyBuffer
+  );
+
+  // Конвертуємо зашифрований ключ у Base64 для зберігання
+  const encryptedKeyBase64 = btoa(
+    String.fromCharCode(...new Uint8Array(encryptedKey))
+  );
+
+  return encryptedKeyBase64; // Цей рядок зберігаємо в базі даних
+}
+
+async function exportPublicKeyToBase64(publicKey) {
+  const exported = await crypto.subtle.exportKey("spki", publicKey);
+  return btoa(String.fromCharCode(...new Uint8Array(exported))); // Base64 рядок
+}
+
+async function importPublicKeyFromBase64(base64PublicKey) {
+  console.log(
+    "______________________",
+    base64PublicKey,
+    "______________________"
+  );
+
+  const binaryDer = Uint8Array.from(atob(base64PublicKey), (c) =>
+    c.charCodeAt(0)
+  );
+  const publicKey = await crypto.subtle.importKey(
+    "spki",
+    binaryDer,
+    {
+      name: "RSA-OAEP",
+      hash: "SHA-256",
+    },
+    true,
+    ["encrypt"]
+  );
+  console.log(publicKey);
+
+  return publicKey;
+}
+
+async function encryptMessage(message, symmetricKey) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encodedMessage = new TextEncoder().encode(message);
+
+  const encryptedContent = await crypto.subtle.encrypt(
+    {
+      name: "AES-GCM",
+      iv: iv,
+    },
+    symmetricKey,
+    encodedMessage
+  );
+
+  const encryptedArray = new Uint8Array(encryptedContent);
+  const encryptedBase64 = btoa(String.fromCharCode(...encryptedArray));
+
+  return {
+    encryptedMessage: encryptedBase64,
+    iv: arrayBufferToBase64(iv),
+  };
+}
+
+function isBase64(str) {
+  try {
+    return btoa(atob(str)) === str;
+  } catch (err) {
+    return false;
+  }
+}
+
+async function decryptMessage(encryptedData, symmetricKey) {
+  console.log("Після завантаження:");
+  console.log("encryptedMessage:", encryptedData.encryptedMessage);
+  console.log("iv:", encryptedData.iv);
+
+  // Перетворюємо зашифроване повідомлення з Base64 на масив байтів
+  console.log("===========================");
+
+  const encryptedArray = new Uint8Array(
+    atob(encryptedData.encryptedMessage)
+      .split("")
+      .map((c) => c.charCodeAt(0))
+  );
+
+  // Перетворюємо iv з Base64 в ArrayBuffer для використання в AES-GCM
+  const iv = new Uint8Array(base64ToArrayBuffer(encryptedData.iv));
+
+  // Розшифровуємо повідомлення за допомогою AES-GCM
+  const decryptedContent = await crypto.subtle.decrypt(
+    {
+      name: "AES-GCM",
+      iv: iv,
+    },
+    symmetricKey,
+    encryptedArray
+  );
+
+  // Перетворюємо розшифрований масив байтів назад в текст
+  const decoder = new TextDecoder();
+  const decryptedMessage = decoder.decode(decryptedContent);
+
+  return decryptedMessage;
+}
+
+function base64ToArrayBuffer(base64) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+//
+
+//
+
 function getAdminEmail() {
   if (chatRoom.value) {
     socket.emit("getAdminEmail", chatRoom.value);
@@ -73,14 +326,45 @@ const hideErrors = () => {
   userPassword.classList.remove("error");
 };
 
-const sendMessage = (e) => {
+const sendMessage = async (e) => {
   e.preventDefault();
   if (nameInput.value && msgInput.value && chatRoom.value) {
+    // Отримуємо симетричний ключ для конкретної кімнати
+    const base64SymmetricKey = localStorage.getItem(chatRoom.value);
+    if (!base64SymmetricKey) {
+      console.error("Symmetric key not found for room:", chatRoom.value);
+      return;
+    }
+
+    const arrayBufferSymmetricKey = base64ToArrayBuffer(base64SymmetricKey);
+    const symmetricKey = await crypto.subtle.importKey(
+      "raw",
+      arrayBufferSymmetricKey,
+      { name: "AES-GCM" },
+      true,
+      ["encrypt", "decrypt"]
+    );
+
+    const encryptedMessage = await encryptMessage(msgInput.value, symmetricKey);
+    // const decryptedMessage = await decryptMessage(
+    //   encryptedMessage,
+    //   symmetricKey
+    // );
+    // console.log("encryptedMessage: " + encryptedMessage);
+    // console.log("decryptedMessage: " + decryptedMessage);
+
+    console.log("\n\n\nПеред збереженням:");
+    console.log("encryptedMessage:", encryptedMessage);
+    console.log("iv:", encryptedMessage.iv, "\n\n");
+
+    // Відправляємо зашифроване повідомлення на сервер
     socket.emit("message", {
       name: nameInput.value,
-      text: msgInput.value,
+      text: encryptedMessage.encryptedMessage,
+      iv: encryptedMessage.iv,
     });
-    // щоб повідомлення зникло в полі введення
+
+    // Щоб повідомлення зникло в полі введення
     msgInput.value = "";
   }
   msgInput.focus();
@@ -90,18 +374,52 @@ const deleteMsg = (room, id) => {
   socket.emit("deleteMessage", { room, id });
 };
 
-function enterRoom(isAdmin) {
+async function enterRoom(isAdmin) {
   if (nameInput.value && chatRoom.value) {
+    const regeneratedKey = await checkPrivateKey();
+    console.log("BOOONG call enter room");
     socket.emit("enterRoom", {
       name: nameInput.value,
       room: chatRoom.value,
       userPassword: userPassword.value,
       roomPassword: roomPassword.value,
       adminEmail: isAdmin ? email.value : null,
+      regeneratedKey,
     });
   }
   emailHelpContainer.classList.add("hidden");
 }
+
+socket.on("createSymmetricKey", async (isAdmin) => {
+  let publicKey;
+  if (!(await checkPrivateKey())) {
+    publicKey = await generateKeyPair();
+    console.log("ALARM " + publicKey);
+    const userName = nameInput.value;
+    const roomName = chatRoom.value;
+    socket.emit("updateKeys", { userName, publicKey, roomName });
+  }
+
+  // якщо кімната не існує, і її створюють
+  adminEmail.classList.add("hidden");
+  email.value = "";
+  console.log("Created SymmetricKey");
+  if (isAdmin) {
+    const symmetricKey = await generateSymmetricKey();
+    const encryptedSymmetricKey = await encryptSymmetricKeyWithPublicKey(
+      symmetricKey,
+      publicKey
+    );
+    // записую симетричний ключ, зашифрований публічним ключем автора кімнати
+
+    socket.emit("writeSymmetricKey", {
+      userName: nameInput.value,
+      roomName: chatRoom.value,
+      encryptedSymmetricKey,
+    });
+    console.log("encryptedSymmetricKey:  " + encryptedSymmetricKey);
+  }
+});
 
 function verifyPasswords(e) {
   e.preventDefault();
@@ -133,7 +451,7 @@ msgInput.addEventListener("keypress", () => {
   socket.emit("activity", nameInput.value);
 });
 
-// Listen for messages that we receive from server
+//
 
 socket.on("deleteMessage", (id) => {
   const temp = document.getElementById(id);
@@ -142,12 +460,18 @@ socket.on("deleteMessage", (id) => {
   }
 });
 
-socket.on("updateMessage", (id, updatedMessage) => {
+socket.on("updateMessage", async (id, updatedMessage, iv) => {
+  const base64Key = localStorage.getItem(chatRoom.value);
+  const symmetricKey = await importSymmetricKey(base64Key);
+  const decodedText = await decryptMessage(
+    { encryptedMessage: updatedMessage, iv: iv },
+    symmetricKey
+  );
   const liElement = document.getElementById(id);
   if (liElement) {
     const postTextDiv = liElement.querySelector(".post-text");
     if (postTextDiv) {
-      postTextDiv.innerText = updatedMessage;
+      postTextDiv.innerText = decodedText;
       renderEditedLabel(liElement);
     }
   }
@@ -163,15 +487,22 @@ function renderEditedLabel(liElement) {
   }
 }
 
-socket.on("message", (data) => {
+socket.on("message", async (data) => {
   activity.textContent = "";
-  const { name, text, time, _id, edited } = data;
+  const { name, text, iv, time, _id, edited } = data;
+
   const li = document.createElement("li");
   li.className = "post";
   if (name === nameInput.value) li.className = "post post-right";
   if (name !== nameInput.value && name !== "Admin")
     li.className = "post post-left";
   if (name !== "Admin") {
+    const base64Key = localStorage.getItem(chatRoom.value);
+    const symmetricKey = await importSymmetricKey(base64Key);
+    const decodedText = await decryptMessage(
+      { encryptedMessage: text, iv: iv },
+      symmetricKey
+    );
     li.innerHTML = `<div class="post-header ${
       name === nameInput.value ? "post-user" : "post-reply"
     }">
@@ -192,7 +523,7 @@ socket.on("message", (data) => {
         }         
         <span>${time}</span> 
         </div>
-        <div class="post-text">${text}
+        <div class="post-text">${decodedText}
         </div>`;
     li.id = _id;
   } else {
@@ -223,12 +554,41 @@ socket.on("message", (data) => {
         sendMessageForm.classList.add("hidden");
         updatedMsgInput.focus();
 
-        const editMessage = (e) => {
+        const editMessage = async (e) => {
           e.preventDefault();
+
+          const base64SymmetricKey = localStorage.getItem(chatRoom.value);
+          if (!base64SymmetricKey) {
+            console.error("Symmetric key not found for room:", chatRoom.value);
+            return;
+          }
+
+          const arrayBufferSymmetricKey =
+            base64ToArrayBuffer(base64SymmetricKey);
+          const symmetricKey = await crypto.subtle.importKey(
+            "raw",
+            arrayBufferSymmetricKey,
+            { name: "AES-GCM" },
+            true,
+            ["encrypt", "decrypt"]
+          );
+
+          const encryptedMessage = await encryptMessage(
+            updatedMsgInput.value,
+            symmetricKey
+          );
+
+          // socket.emit("message", {
+          //   name: nameInput.value,
+          //   text: encryptedMessage.encryptedMessage,
+          //   iv: encryptedMessage.iv,
+          // });
+
           socket.emit("updateMessage", {
             room: chatRoom.value,
             id: _id,
-            updatedMsg: updatedMsgInput.value,
+            updatedMsg: encryptedMessage,
+            iv: encryptedMessage.iv,
           });
           // postTextDiv.innerText = updatedMsgInput.value;
           updatedMsgInput.value = "";
@@ -291,7 +651,7 @@ socket.on("wrongPassword", (data) => {
   }
 });
 
-socket.on("passwordConfirmed", (data) => {
+socket.on("passwordConfirmed", async (data) => {
   nameInput.setAttribute("readonly", true);
   if (data.message === "user") {
     if (!userPassword.classList.contains("hidden")) {
@@ -303,10 +663,9 @@ socket.on("passwordConfirmed", (data) => {
   if (data.message === "room") {
     switchOptions();
     hideErrors();
-    enterRoom(data.admin);
-  }
-  if (data.admin) {
-    adminEmail.classList.add("hidden");
+    console.log(await checkPrivateKey());
+
+    await enterRoom(data.admin);
   }
 });
 
@@ -347,7 +706,6 @@ function showUsers(users) {
   if (users) {
     usersList.innerHTML = `<em>Active users in ${chatRoom.value}:</em>`;
     users.forEach((user, i) => {
-      console.log(user);
       usersList.textContent += ` ${user}`;
       if (users.length > 1 && i !== users.length - 1) {
         usersList.textContent += ", ";

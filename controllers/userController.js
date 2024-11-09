@@ -40,7 +40,13 @@ export const verifyUserPassword = async (name, password) => {
 // Зареєструвати нового користувача
 export const registerUser = async (name, socketID, room, password) => {
   try {
-    const user = new User({ name, socketID, currentRoom: room, password });
+    const user = new User({
+      name,
+      socketID,
+      currentRoom: room,
+      password,
+      roomList: [{ roomName: room }],
+    });
     const savedUser = await user.save();
     return savedUser;
   } catch (error) {
@@ -53,7 +59,10 @@ export const updateUser = async (name, socketID, room) => {
   try {
     const updatedUser = await User.findOneAndUpdate(
       { name },
-      { $set: { socketID, currentRoom: room } },
+      {
+        $set: { socketID, currentRoom: room }, // Оновити socketID та поточну кімнату
+        $addToSet: { roomList: { roomName: room } }, // Додати кімнату до roomList, якщо її ще немає
+      },
       { new: true, select: "name socketID currentRoom" }
     );
 
@@ -104,6 +113,29 @@ export const setUserUnactivate = async (name, room) => {
     return updatedRoom;
   } catch (error) {
     console.error("Помилка при деактивації користувача:", error);
+    throw error;
+  }
+};
+
+export const updatePublicKey = async (userName, newPublicKey) => {
+  try {
+    // Знайти користувача за ім'ям
+    const user = await User.findOne({ name: userName });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Оновити публічний ключ користувача
+    user.publicKey = newPublicKey;
+
+    // Зберегти зміни в базі даних
+    await user.save();
+
+    console.log(`Public key for user ${userName} updated successfully`);
+    return user;
+  } catch (error) {
+    console.error(`Error updating public key for ${userName}:`, error);
     throw error;
   }
 };

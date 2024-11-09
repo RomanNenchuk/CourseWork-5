@@ -6,6 +6,7 @@ import {
   updateUser,
   setUserActivate,
   setUserUnactivate,
+  updatePublicKey,
 } from "../controllers/userController.js";
 import {
   getUsersInRoom,
@@ -17,6 +18,7 @@ import {
   addUserToRoom,
   createRoomWithUser,
   getAdminEmail,
+  writeSymmetricKey,
 } from "../controllers/roomController.js";
 import {
   setMessage,
@@ -39,7 +41,14 @@ const chatSocket = (io) => {
 
     socket.on(
       "enterRoom",
-      async ({ name, room, userPassword, roomPassword, adminEmail }) => {
+      async ({
+        name,
+        room,
+        userPassword,
+        roomPassword,
+        adminEmail,
+        regeneratedKey,
+      }) => {
         try {
           const userInfo = await getUserByID(socket.id);
           let prevRoom;
@@ -95,13 +104,17 @@ const chatSocket = (io) => {
           }
           // якщо кімната ще не створена
           else if (!alreadyExists) {
+            console.log("Ahaaaaaaaaaaaaaaaa!! Created Room");
             await createRoomWithUser(room, name, roomPassword, adminEmail);
+            socket.emit("createSymmetricKey", true);
           }
 
-          // Відображення попередніх повідомлень
-          const prevMessages = await getPrevMessages(room);
-          if (prevMessages) {
-            socket.emit("roomMessages", prevMessages);
+          // Відображення попередніх повідомлень, якщо користувач має приватний ключ
+          if (regeneratedKey) {
+            const prevMessages = await getPrevMessages(room);
+            if (prevMessages) {
+              socket.emit("roomMessages", prevMessages);
+            }
           }
 
           // Оновлення списку користувачів у кімнаті
@@ -205,12 +218,12 @@ const chatSocket = (io) => {
     );
 
     // Обробка повідомлень
-    socket.on("message", async ({ name, text }) => {
+    socket.on("message", async ({ name, text, iv }) => {
       try {
         const userInfo = await getUserByID(socket.id);
         if (userInfo) {
           const room = userInfo.currentRoom;
-          const msg = buildMsg(name, text);
+          const msg = buildMsg(name, text, iv);
           const objID = await setMessage(msg, room);
           if (room) {
             io.to(room).emit("message", { ...msg, _id: objID._id });
@@ -226,9 +239,9 @@ const chatSocket = (io) => {
       socket.broadcast.to(room).emit("deleteMessage", id);
     });
 
-    socket.on("updateMessage", async ({ room, id, updatedMsg }) => {
-      updateMessage(room, id, updatedMsg);
-      io.to(room).emit("updateMessage", id, updatedMsg);
+    socket.on("updateMessage", async ({ room, id, updatedMsg, iv }) => {
+      await updateMessage(room, id, updatedMsg.encryptedMessage, iv);
+      io.to(room).emit("updateMessage", id, updatedMsg.encryptedMessage, iv);
     });
 
     // Обробка активності (набирання тексту)
@@ -252,6 +265,21 @@ const chatSocket = (io) => {
     socket.on("getAdminEmail", async (chatRoom) => {
       socket.emit("getAdminEmail", await getAdminEmail(chatRoom));
     });
+
+    socket.on("updateKeys", async ({ userName, publicKey, roomName }) => {
+      await updatePublicKey(userName, publicKey);
+      const prevMessages = await getPrevMessages(roomName);
+      if (prevMessages) {
+        socket.emit("roomMessages", prevMessages);
+      }
+    });
+
+    socket.on(
+      "writeSymmetricKey",
+      async ({ userName, roomName, encryptedSymmetricKey }) => {
+        await writeSymmetricKey(userName, roomName, encryptedSymmetricKey);
+      }
+    );
   });
 };
 

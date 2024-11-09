@@ -144,3 +144,40 @@ export const getAdminEmail = async (roomName) => {
     console.error("Помилка при отриманні імейл адміністратора:", error);
   }
 };
+
+export const writeSymmetricKey = async (
+  userName,
+  roomName,
+  encryptedSymmetricKey
+) => {
+  try {
+    console.log("Auuuuuuuuuuuuuuuuuuuu!! Write symetric");
+
+    // Знаходимо кімнату за її назвою
+    const room = await Room.findOne({ roomName });
+
+    if (!room) {
+      throw new Error("Room not found");
+    }
+
+    // Знаходимо учасника кімнати за userName
+    const participantIndex = room.participants.findIndex(
+      (participant) => participant.userName === userName
+    );
+
+    if (participantIndex === -1) {
+      throw new Error("User not found in the room");
+    }
+
+    // Оновлюємо поле encryptedSymmetricKey для цього учасника
+    room.participants[participantIndex].encryptedSymmetricKey =
+      encryptedSymmetricKey;
+
+    // Зберігаємо зміни в базі даних
+    await room.save();
+
+    console.log("Encrypted symmetric key saved successfully");
+  } catch (error) {
+    console.error("Error saving encrypted symmetric key:", error);
+  }
+};
