@@ -22,6 +22,12 @@ const roomSchema = new Schema({
     type: String,
     required: false,
   },
+  requests: [
+    {
+      userName: { type: String, required: true },
+      publicKey: { type: String, required: true },
+    },
+  ],
 });
 
 const Room = mongoose.model("Room", roomSchema);

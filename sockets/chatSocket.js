@@ -20,6 +20,8 @@ import {
   createRoomWithUser,
   getAdminEmail,
   writeSymmetricKey,
+  addRequest,
+  getSymmetricKey,
 } from "../controllers/roomController.js";
 import {
   setMessage,
@@ -48,7 +50,10 @@ const chatSocket = (io) => {
         userPassword,
         roomPassword,
         adminEmail,
-        regeneratedKey,
+        hasPrivate,
+        hasKeys,
+        publicKey,
+        hasSymmetric,
       }) => {
         try {
           const userInfo = await getUserByID(socket.id);
@@ -72,12 +77,19 @@ const chatSocket = (io) => {
           // Перевірка реєстрації користувача
           const userIsRegistered = await isRegistered(name);
           let user;
+
           if (!userIsRegistered) {
             user = await registerUser(name, socket.id, room, userPassword);
           } else {
             // оскільки пароль ми вже перевіряли на правильність, то просто додаємо
             // користувача до кімнати
             user = await updateUser(name, socket.id, room);
+          }
+
+          if (!hasPrivate) {
+            // якщо в користувача не було пари ключів, і я перегенерував, то
+            // треба зберегти новий публічний ключ в базі даних
+            await updatePublicKey(name, publicKey);
           }
 
           // Приєднання до нової кімнати
@@ -94,12 +106,26 @@ const chatSocket = (io) => {
 
           // якщо кімната існує
           if (alreadyExists) {
+            // якщо користувач не має приватного та симетричного ключів
+            if (!hasSymmetric && !hasPrivate) {
+              console.error(
+                "\nFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\n"
+              );
+              await addRequest(name, room, publicKey);
+              socket.broadcast
+                .to(user.currentRoom)
+                .emit("getSymmetricKey", name, publicKey);
+              return;
+            }
+
             // Перевірка, чи був користувач колись у цій кімнаті
             if (await wasInRoom(name, room)) {
               await setUserActivate(name, room);
             } else {
               // оскільки користувач вже пройшов перевірку на правильність пароля,
               // то додаю користувача до кімнати
+              console.log("LALALALALALALLALALLLLLLLLLLLLLLLLLLLLL");
+
               await addUserToRoom(room, name);
             }
           }
@@ -111,13 +137,15 @@ const chatSocket = (io) => {
             socket.emit("createSymmetricKey", true, publicKey);
           }
 
-          // Відображення попередніх повідомлень, якщо користувач має приватний ключ
-          if (regeneratedKey) {
+          // Відображення попередніх повідомлень, якщо користувач має приватний та симетричний ключі
+          if (hasKeys) {
             const prevMessages = await getPrevMessages(room);
             if (prevMessages) {
               socket.emit("roomMessages", prevMessages);
             }
           }
+
+          // якщо є приватний, але нема симетричного
 
           // Оновлення списку користувачів у кімнаті
           io.to(user.currentRoom).emit("userList", {
@@ -278,10 +306,47 @@ const chatSocket = (io) => {
 
     socket.on(
       "writeSymmetricKey",
-      async ({ userName, roomName, encryptedSymmetricKey }) => {
+      async ({ userName, roomName, encryptedSymmetricKey, isAdmin }) => {
+        console.log("AALALLALALALALALALALLAALALLALALALALALALA");
+
+        if (!isAdmin) {
+          await addUserToRoom(roomName, userName);
+        }
         await writeSymmetricKey(userName, roomName, encryptedSymmetricKey);
       }
     );
+
+    socket.on("checkSymmetricKey", async (userName, roomName) => {
+      const symmetricKey = await getSymmetricKey(userName, roomName);
+      console.error(symmetricKey);
+
+      if (symmetricKey) {
+        socket.emit("checkSymmetricKey", symmetricKey);
+        const prevMessages = await getPrevMessages(roomName);
+        if (prevMessages) {
+          socket.emit("roomMessages", prevMessages);
+        }
+        io.to(roomName).emit("userList", {
+          users: await getUsersInRoom(roomName),
+        });
+        const roomInfo = await getRoomsByNameAndCount("", 1);
+        if (roomInfo.length) {
+          io.emit("findRoom", roomInfo);
+        }
+        socket.emit(
+          "message",
+          buildMsg("Admin", `You have joined the ${roomName} chat room`)
+        );
+
+        // Оновлення списку користувачів у попередній кімнаті
+        // Спершу без
+        // if (prevRoom) {
+        //   io.to(prevRoom).emit("userList", {
+        //     users: await getUsersInRoom(prevRoom),
+        //   });
+        // }
+      }
+    });
   });
 };
 

@@ -181,3 +181,42 @@ export const writeSymmetricKey = async (
     console.error("Error saving encrypted symmetric key:", error);
   }
 };
+
+export const addRequest = async (name, room, publicKey) => {
+  try {
+    await Room.findOneAndUpdate(
+      { roomName: room },
+      {
+        $push: {
+          requests: { userName: name, publicKey: publicKey },
+        },
+      },
+      { new: true, upsert: true }
+    );
+    console.log(`Request from ${name} added to room: ${room}`);
+  } catch (error) {
+    console.error("Error adding request:", error);
+  }
+};
+
+export const getSymmetricKey = async (userName, roomName) => {
+  try {
+    // Шукаємо кімнату за її іменем
+    const room = await Room.findOne({ roomName });
+
+    if (!room) {
+      return null; // Кімната не знайдена
+    }
+
+    // Шукаємо користувача серед учасників кімнати
+    const participant = room.participants.find(
+      (participant) => participant.userName === userName
+    );
+
+    // Повертаємо ключ, якщо він існує, або null, якщо ні
+    return participant ? participant.encryptedSymmetricKey || null : null;
+  } catch (error) {
+    console.error("Error fetching symmetric key:", error);
+    return null;
+  }
+};

@@ -99,8 +99,8 @@ async function generateSymmetricKey() {
   // Конвертуємо масив байтів у Base64
   const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
 
-  // Зберігаємо ключ з урахуванням кімнати
-  localStorage.setItem(chatRoom.value, keyBase64);
+  // Зберігаємо ключ з урахуванням кімнати і користувача
+  localStorage.setItem(`${nameInput.value} ${chatRoom.value}`, keyBase64);
   return keyBase64;
 }
 
@@ -118,6 +118,23 @@ async function importPublicKey(publicKeyBase64) {
     },
     true,
     ["encrypt"]
+  );
+}
+
+// Імпорт приватного ключа з Base64 у формат CryptoKey
+async function importPrivateKey(privateKeyBase64) {
+  const binaryDer = Uint8Array.from(atob(privateKeyBase64), (c) =>
+    c.charCodeAt(0)
+  );
+  return await crypto.subtle.importKey(
+    "pkcs8",
+    binaryDer,
+    {
+      name: "RSA-OAEP",
+      hash: "SHA-256",
+    },
+    true,
+    ["decrypt"]
   );
 }
 
@@ -172,17 +189,31 @@ async function encryptSymmetricKeyWithPublicKey(
   return encryptedKeyBase64; // Цей рядок зберігаємо в базі даних
 }
 
+// Розшифрування симетричного ключа за допомогою приватного ключа
+async function decryptSymmetricKey(encryptedSymmetricKeyBase64, privateKey) {
+  const encryptedArray = Uint8Array.from(
+    atob(encryptedSymmetricKeyBase64),
+    (c) => c.charCodeAt(0)
+  );
+
+  const decryptedSymmetricKey = await crypto.subtle.decrypt(
+    {
+      name: "RSA-OAEP",
+    },
+    privateKey,
+    encryptedArray
+  );
+
+  return decryptedSymmetricKey; // ArrayBuffer з розшифрованим симетричним ключем
+}
+
 async function exportPublicKeyToBase64(publicKey) {
   const exported = await crypto.subtle.exportKey("spki", publicKey);
   return btoa(String.fromCharCode(...new Uint8Array(exported))); // Base64 рядок
 }
 
 async function importPublicKeyFromBase64(base64PublicKey) {
-  console.log(
-    "______________________",
-    base64PublicKey,
-    "______________________"
-  );
+  console.log("__________", base64PublicKey, "_______________");
 
   const binaryDer = Uint8Array.from(atob(base64PublicKey), (c) =>
     c.charCodeAt(0)
@@ -330,7 +361,9 @@ const sendMessage = async (e) => {
   e.preventDefault();
   if (nameInput.value && msgInput.value && chatRoom.value) {
     // Отримуємо симетричний ключ для конкретної кімнати
-    const base64SymmetricKey = localStorage.getItem(chatRoom.value);
+    const base64SymmetricKey = localStorage.getItem(
+      `${nameInput.value} ${chatRoom.value}`
+    );
     if (!base64SymmetricKey) {
       console.error("Symmetric key not found for room:", chatRoom.value);
       return;
@@ -346,12 +379,6 @@ const sendMessage = async (e) => {
     );
 
     const encryptedMessage = await encryptMessage(msgInput.value, symmetricKey);
-    // const decryptedMessage = await decryptMessage(
-    //   encryptedMessage,
-    //   symmetricKey
-    // );
-    // console.log("encryptedMessage: " + encryptedMessage);
-    // console.log("decryptedMessage: " + decryptedMessage);
 
     console.log("\n\n\nПеред збереженням:");
     console.log("encryptedMessage:", encryptedMessage);
@@ -376,52 +403,137 @@ const deleteMsg = (room, id) => {
 
 async function enterRoom(isAdmin) {
   if (nameInput.value && chatRoom.value) {
+    const privateKey = localStorage.getItem(nameInput.value);
+
+    const symmetricKey = localStorage.getItem(
+      `${nameInput.value} ${chatRoom.value}`
+    );
+
+    const hasSymmetric = !!symmetricKey;
+    const hasPrivate = !!privateKey;
+
+    if (!symmetricKey) {
+      socket.emit("checkSymmetricKey", nameInput.value, chatRoom.value);
+    }
+
     const regeneratedKey = await checkPrivateKey();
-    console.log("BOOONG call enter room");
+
+    let publicKey;
+    if (!regeneratedKey) {
+      publicKey = await createPublicPrivateKeys();
+    }
+    const hasKeys = hasPrivate && hasSymmetric;
+
     socket.emit("enterRoom", {
       name: nameInput.value,
       room: chatRoom.value,
       userPassword: userPassword.value,
       roomPassword: roomPassword.value,
       adminEmail: isAdmin ? email.value : null,
-      regeneratedKey,
+      hasPrivate,
+      hasKeys,
+      publicKey,
+      hasSymmetric,
     });
   }
   emailHelpContainer.classList.add("hidden");
 }
 
-socket.on("createSymmetricKey", async (isAdmin, userPublicKey) => {
-  let publicKey;
-  if (!(await checkPrivateKey())) {
-    publicKey = await generateKeyPair();
-    console.log("ALARM " + publicKey);
-    const userName = nameInput.value;
-    const roomName = chatRoom.value;
-    socket.emit("updateKeys", { userName, publicKey, roomName });
-  } else {
-    publicKey = userPublicKey;
-  }
+async function createPublicPrivateKeys() {
+  const publicKey = await generateKeyPair();
+  const userName = nameInput.value;
+  const roomName = chatRoom.value;
+  // socket.emit("updateKeys", { userName, publicKey, roomName });
+  return publicKey;
+}
 
-  // якщо кімната не існує, і її створюють
-  adminEmail.classList.add("hidden");
-  email.value = "";
-  console.log("Created SymmetricKey");
-  if (isAdmin) {
-    const symmetricKey = await generateSymmetricKey();
+socket.on("checkSymmetricKey", async (encryptedSymmetricKey) => {
+  // Завантажуємо приватний ключ з localStorage
+  const privateKeyBase64 = localStorage.getItem(nameInput.value);
+  const privateKey = await importPrivateKey(privateKeyBase64);
+
+  // Розшифровуємо симетричний ключ
+  const symmetricKeyBuffer = await decryptSymmetricKey(
+    encryptedSymmetricKey,
+    privateKey
+  );
+
+  const symmetricKeyBase64 = arrayBufferToBase64(symmetricKeyBuffer);
+  localStorage.setItem(
+    `${nameInput.value} ${chatRoom.value}`,
+    symmetricKeyBase64
+  );
+});
+
+socket.on("getSymmetricKey", async (name, foreignPublicKey) => {
+  const button = document.createElement("button");
+  button.addEventListener("click", async () => {
+    const symmetricKey = localStorage.getItem(
+      `${nameInput.value} ${chatRoom.value}`
+    );
     const encryptedSymmetricKey = await encryptSymmetricKeyWithPublicKey(
       symmetricKey,
-      publicKey
+      foreignPublicKey
     );
-    // записую симетричний ключ, зашифрований публічним ключем автора кімнати
-
+    const isAdmin = false;
     socket.emit("writeSymmetricKey", {
-      userName: nameInput.value,
+      userName: name,
       roomName: chatRoom.value,
       encryptedSymmetricKey,
+      isAdmin,
     });
-    console.log("encryptedSymmetricKey:  " + encryptedSymmetricKey);
-  }
+  });
+  button.style.height = "100px";
+  button.style.width = "100px";
+  roomList.appendChild(button);
 });
+
+socket.on("createPublicPrivateKeys", async () => {
+  await createPublicPrivateKeys();
+});
+
+socket.on(
+  "createSymmetricKey",
+  async (isAdmin, userPublicKey, createPrivate) => {
+    let publicKey;
+    if (!(await checkPrivateKey())) {
+      publicKey = await generateKeyPair();
+      console.log("ALARM " + publicKey);
+      const userName = nameInput.value;
+      const roomName = chatRoom.value;
+      socket.emit("updateKeys", { userName, publicKey, roomName });
+    } else {
+      publicKey = userPublicKey;
+    }
+
+    // якщо кімната не існує, і її створюють
+    adminEmail.classList.add("hidden");
+    email.value = "";
+    console.log("Created SymmetricKey");
+    // якщо користувач є творцем кімнати, то він також генерує симетричний ключ
+    if (isAdmin) {
+      const symmetricKey = await generateSymmetricKey();
+      const encryptedSymmetricKey = await encryptSymmetricKeyWithPublicKey(
+        symmetricKey,
+        publicKey
+      );
+      // записую симетричний ключ, зашифрований публічним ключем автора кімнати
+
+      socket.emit("writeSymmetricKey", {
+        userName: nameInput.value,
+        roomName: chatRoom.value,
+        encryptedSymmetricKey,
+        isAdmin,
+      });
+      console.log("encryptedSymmetricKey:  " + encryptedSymmetricKey);
+    }
+    // якщо користувач не є творцем кімнати, то він буде просити симетричний ключ
+    // в іншого користувача, який зараз активний в цій кімнаті або перепише симетричний ключ
+    // якщо активних користувачів нема
+    else {
+    }
+  }
+);
 
 function verifyPasswords(e) {
   e.preventDefault();
@@ -463,7 +575,9 @@ socket.on("deleteMessage", (id) => {
 });
 
 socket.on("updateMessage", async (id, updatedMessage, iv) => {
-  const base64Key = localStorage.getItem(chatRoom.value);
+  const base64Key = localStorage.getItem(
+    `${nameInput.value} ${chatRoom.value}`
+  );
   const symmetricKey = await importSymmetricKey(base64Key);
   const decodedText = await decryptMessage(
     { encryptedMessage: updatedMessage, iv: iv },
@@ -499,7 +613,9 @@ socket.on("message", async (data) => {
   if (name !== nameInput.value && name !== "Admin")
     li.className = "post post-left";
   if (name !== "Admin") {
-    const base64Key = localStorage.getItem(chatRoom.value);
+    const base64Key = localStorage.getItem(
+      `${nameInput.value} ${chatRoom.value}`
+    );
     const symmetricKey = await importSymmetricKey(base64Key);
     const decodedText = await decryptMessage(
       { encryptedMessage: text, iv: iv },
@@ -559,7 +675,9 @@ socket.on("message", async (data) => {
         const editMessage = async (e) => {
           e.preventDefault();
 
-          const base64SymmetricKey = localStorage.getItem(chatRoom.value);
+          const base64SymmetricKey = localStorage.getItem(
+            `${nameInput.value} ${chatRoom.value}`
+          );
           if (!base64SymmetricKey) {
             console.error("Symmetric key not found for room:", chatRoom.value);
             return;

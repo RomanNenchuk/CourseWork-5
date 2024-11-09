@@ -12,6 +12,17 @@ export const getUserByID = async (id) => {
   }
 };
 
+// Отримати користувача за ім'ям
+export const getUserByName = async (name) => {
+  try {
+    const user = await User.findOne({ name: name });
+    return user;
+  } catch (error) {
+    console.error("Помилка при пошуку користувача:", error);
+    throw error;
+  }
+};
+
 // Перевірити, чи користувач зареєстрований
 export const isRegistered = async (name) => {
   try {
