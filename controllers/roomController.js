@@ -104,6 +104,8 @@ export const verifyRoomPassword = async (roomName, password) => {
 // Додати користувача до кімнати
 export const addUserToRoom = async (roomName, userName) => {
   try {
+    console.log("\n\n\n\n\n\n\njjjjjjj\n\n");
+
     const updatedRoom = await Room.findOneAndUpdate(
       { roomName },
       { $push: { participants: { userName, active: true } } },

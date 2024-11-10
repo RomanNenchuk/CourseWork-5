@@ -412,17 +412,16 @@ async function enterRoom(isAdmin) {
     const hasSymmetric = !!symmetricKey;
     const hasPrivate = !!privateKey;
 
-    if (!symmetricKey) {
+    // якщо нема симетричного ключа, але є приватний, то можемо перевірити, чи нема
+    // зашифрованого симетричного ключ з бази даних
+    if (!symmetricKey && hasPrivate) {
       socket.emit("checkSymmetricKey", nameInput.value, chatRoom.value);
     }
 
-    const regeneratedKey = await checkPrivateKey();
-
     let publicKey;
-    if (!regeneratedKey) {
+    if (!hasPrivate) {
       publicKey = await createPublicPrivateKeys();
     }
-    const hasKeys = hasPrivate && hasSymmetric;
 
     socket.emit("enterRoom", {
       name: nameInput.value,
@@ -431,9 +430,8 @@ async function enterRoom(isAdmin) {
       roomPassword: roomPassword.value,
       adminEmail: isAdmin ? email.value : null,
       hasPrivate,
-      hasKeys,
-      publicKey,
       hasSymmetric,
+      publicKey,
     });
   }
   emailHelpContainer.classList.add("hidden");
@@ -447,6 +445,7 @@ async function createPublicPrivateKeys() {
   return publicKey;
 }
 
+// спрацює лише, якщо симетричний ключ, зашифрований публічним ключем користувача, буде в базі даних
 socket.on("checkSymmetricKey", async (encryptedSymmetricKey) => {
   // Завантажуємо приватний ключ з localStorage
   const privateKeyBase64 = localStorage.getItem(nameInput.value);
@@ -463,10 +462,16 @@ socket.on("checkSymmetricKey", async (encryptedSymmetricKey) => {
     `${nameInput.value} ${chatRoom.value}`,
     symmetricKeyBase64
   );
+  enterRoom(false);
 });
 
 socket.on("getSymmetricKey", async (name, foreignPublicKey) => {
   const button = document.createElement("button");
+  button.style.height = "100px";
+  button.style.width = "100px";
+  roomList.appendChild(button);
+
+  // записує користувача та додає зашифрований його публічним ключем симетричний ключ
   button.addEventListener("click", async () => {
     const symmetricKey = localStorage.getItem(
       `${nameInput.value} ${chatRoom.value}`
@@ -482,58 +487,50 @@ socket.on("getSymmetricKey", async (name, foreignPublicKey) => {
       encryptedSymmetricKey,
       isAdmin,
     });
+    button.remove();
   });
-  button.style.height = "100px";
-  button.style.width = "100px";
-  roomList.appendChild(button);
 });
 
 socket.on("createPublicPrivateKeys", async () => {
   await createPublicPrivateKeys();
 });
 
-socket.on(
-  "createSymmetricKey",
-  async (isAdmin, userPublicKey, createPrivate) => {
-    let publicKey;
-    if (!(await checkPrivateKey())) {
-      publicKey = await generateKeyPair();
-      console.log("ALARM " + publicKey);
-      const userName = nameInput.value;
-      const roomName = chatRoom.value;
-      socket.emit("updateKeys", { userName, publicKey, roomName });
-    } else {
-      publicKey = userPublicKey;
-    }
+socket.on("createSymmetricKey", async (userPublicKey, isAdmin) => {
+  // let publicKey;
+  // if (!(await checkPrivateKey())) {
+  //   publicKey = await generateKeyPair();
+  //   console.log("ALARM " + publicKey);
+  //   const userName = nameInput.value;
+  //   const roomName = chatRoom.value;
+  //   socket.emit("updateKeys", { userName, publicKey, roomName });
+  // } else {
+  // publicKey = userPublicKey;
+  // }
 
-    // якщо кімната не існує, і її створюють
-    adminEmail.classList.add("hidden");
-    email.value = "";
-    console.log("Created SymmetricKey");
-    // якщо користувач є творцем кімнати, то він також генерує симетричний ключ
-    if (isAdmin) {
-      const symmetricKey = await generateSymmetricKey();
-      const encryptedSymmetricKey = await encryptSymmetricKeyWithPublicKey(
-        symmetricKey,
-        publicKey
-      );
-      // записую симетричний ключ, зашифрований публічним ключем автора кімнати
+  // якщо кімната не існує, і її створюють
 
-      socket.emit("writeSymmetricKey", {
-        userName: nameInput.value,
-        roomName: chatRoom.value,
-        encryptedSymmetricKey,
-        isAdmin,
-      });
-      console.log("encryptedSymmetricKey:  " + encryptedSymmetricKey);
-    }
-    // якщо користувач не є творцем кімнати, то він буде просити симетричний ключ
-    // в іншого користувача, який зараз активний в цій кімнаті або перепише симетричний ключ
-    // якщо активних користувачів нема
-    else {
-    }
-  }
-);
+  console.log("\n\n\n___________createSymmetricKey________\n\n\n");
+
+  adminEmail.classList.add("hidden");
+  email.value = "";
+  console.log("Created SymmetricKey");
+  // якщо користувач є творцем кімнати, то він також генерує симетричний ключ
+  const symmetricKey = await generateSymmetricKey();
+
+  const encryptedSymmetricKey = await encryptSymmetricKeyWithPublicKey(
+    symmetricKey,
+    userPublicKey
+  );
+  // записую симетричний ключ, зашифрований публічним ключем автора кімнати
+
+  socket.emit("writeSymmetricKey", {
+    userName: nameInput.value,
+    roomName: chatRoom.value,
+    encryptedSymmetricKey,
+    isAdmin, // тому що нам не треба ще раз додавати того, хто створив кімнату
+  });
+  console.log("encryptedSymmetricKey:  " + encryptedSymmetricKey);
+});
 
 function verifyPasswords(e) {
   e.preventDefault();
