@@ -34,6 +34,7 @@ const editMessageForm = document.querySelector(".form-edit");
 const updatedMsgInput = document.getElementById("updatedMessage");
 const applyChangeBtn = document.getElementById("apply-change");
 const requestSent = document.querySelector(".request-sent");
+const requestList = document.querySelector(".request-list");
 
 helpIcon.addEventListener("click", getAdminEmail);
 
@@ -329,6 +330,16 @@ function getAdminEmail() {
   }
 }
 
+socket.on("requestQuery", async (requests) => {
+  const symmetricKey = localStorage.getItem(
+    `${nameInput.value} ${chatRoom.value}`
+  );
+  const isAdmin = false;
+  requests.forEach(async (request) => {
+    writeSymmetricKey(isAdmin, request.name, request.publicKey, symmetricKey);
+  });
+});
+
 socket.on("getAdminEmail", (email) => {
   emailHelpContainer.classList.remove("hidden");
   if (email) {
@@ -436,8 +447,8 @@ async function enterRoom(isAdmin) {
     }
 
     // інакше, якщо симетричний ключ є
-
     requestSent.classList.add("hidden");
+    document.querySelector(".chat-display").innerHTML = "";
 
     // якщо нема симетричного ключа, але є приватний, то можемо перевірити, чи нема
     // зашифрованого симетричного ключ з бази даних
@@ -447,14 +458,8 @@ async function enterRoom(isAdmin) {
     switchOptions();
 
     socket.emit("enterRoom", {
-      name: nameInput.value,
-      room: chatRoom.value,
-      userPassword: userPassword.value,
-      roomPassword: roomPassword.value,
-      adminEmail,
-      hasPrivate,
-      hasSymmetric,
-      publicKey,
+      userName: nameInput.value,
+      roomName: chatRoom.value,
     });
   }
   emailHelpContainer.classList.add("hidden");
@@ -488,30 +493,16 @@ socket.on("checkSymmetricKey", async (encryptedSymmetricKey) => {
   enterRoom(false);
 });
 
-socket.on("getSymmetricKey", async (name, foreignPublicKey) => {
-  const button = document.createElement("button");
-  button.style.height = "100px";
-  button.style.width = "100px";
-  roomList.appendChild(button);
+socket.on("setSymmetricKey", () => enterRoom(false));
 
+socket.on("getSymmetricKey", async (name, foreignPublicKey) => {
   // записує користувача та додає зашифрований його публічним ключем симетричний ключ
-  button.addEventListener("click", async () => {
-    const symmetricKey = localStorage.getItem(
-      `${nameInput.value} ${chatRoom.value}`
-    );
-    const encryptedSymmetricKey = await encryptSymmetricKeyWithPublicKey(
-      symmetricKey,
-      foreignPublicKey
-    );
-    const isAdmin = false;
-    socket.emit("writeSymmetricKey", {
-      userName: name,
-      roomName: chatRoom.value,
-      encryptedSymmetricKey,
-      isAdmin,
-    });
-    button.remove();
-  });
+  const symmetricKey = localStorage.getItem(
+    `${nameInput.value} ${chatRoom.value}`
+  );
+  const isAdmin = false;
+
+  await writeSymmetricKey(isAdmin, name, foreignPublicKey, symmetricKey);
 });
 
 socket.on("createPublicPrivateKeys", async () => {
@@ -540,21 +531,31 @@ socket.on("createSymmetricKey", async (userPublicKey, isAdmin) => {
   // якщо користувач є творцем кімнати, то він також генерує симетричний ключ
   const symmetricKey = await generateSymmetricKey();
 
+  await writeSymmetricKey(
+    isAdmin,
+    nameInput.value,
+    userPublicKey,
+    symmetricKey
+  );
+
+  enterRoom(isAdmin);
+});
+
+async function writeSymmetricKey(isAdmin, userName, publicKey, symmetricKey) {
+  // isAdmin існує, тому що нам не треба ще раз додавати того, хто створив кімнату
   const encryptedSymmetricKey = await encryptSymmetricKeyWithPublicKey(
     symmetricKey,
-    userPublicKey
+    publicKey
   );
   // записую симетричний ключ, зашифрований публічним ключем автора кімнати
 
   socket.emit("writeSymmetricKey", {
-    userName: nameInput.value,
+    userName: userName,
     roomName: chatRoom.value,
     encryptedSymmetricKey,
-    isAdmin, // тому що нам не треба ще раз додавати того, хто створив кімнату
+    isAdmin,
   });
-  console.log("encryptedSymmetricKey:  " + encryptedSymmetricKey);
-  enterRoom(isAdmin);
-});
+}
 
 function verifyPasswords(e) {
   e.preventDefault();
@@ -757,10 +758,6 @@ socket.on("roomMessages", (messages) => {
       listener(message);
     });
   }
-});
-
-socket.on("leftRoom", () => {
-  document.querySelector(".chat-display").innerHTML = "";
 });
 
 let activityTimer;

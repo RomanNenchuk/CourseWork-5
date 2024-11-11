@@ -170,8 +170,6 @@ export const writeSymmetricKey = async (
   encryptedSymmetricKey
 ) => {
   try {
-    console.log("Auuuuuuuuuuuuuuuuuuuu!! Write symetric");
-
     // Знаходимо кімнату за її назвою
     const room = await Room.findOne({ roomName });
 
@@ -237,5 +235,26 @@ export const getSymmetricKey = async (userName, roomName) => {
   } catch (error) {
     console.error("Error fetching symmetric key:", error);
     return null;
+  }
+};
+
+export const getRequests = async (roomName) => {
+  try {
+    const room = Room.findOne({ roomName }, "requests"); // використовую проєкцію
+    // для отримання тільки requests
+    if (!room) {
+      return null;
+    }
+    return room.requests;
+  } catch (error) {
+    console.error("Помилка при отриманні списку запитів", error);
+  }
+};
+
+export const clearRequests = async (roomName) => {
+  try {
+    Room.updateOne({ roomName }, { $set: { requests: [] } });
+  } catch (error) {
+    console.error("Помилка при очищенні запитів", error);
   }
 };
