@@ -238,23 +238,48 @@ export const getSymmetricKey = async (userName, roomName) => {
   }
 };
 
-export const getRequests = async (roomName) => {
+export const getRequestsAndDeleteMyself = async (userName, roomName) => {
   try {
-    const room = Room.findOne({ roomName }, "requests"); // використовую проєкцію
-    // для отримання тільки requests
+    // Знаходимо кімнату за назвою і одночасно видаляємо запит користувача
+    const room = await Room.findOneAndUpdate(
+      { roomName },
+      { $pull: { requests: { userName: userName } } }, // видаляємо запит користувача
+      { new: true, projection: "requests" } // отримуємо оновлений масив запитів
+    );
+
+    // Перевіряємо, чи кімнату знайдено
     if (!room) {
       return null;
     }
-    return room.requests;
+
+    return room.requests; // Повертаємо оновлений масив requests
   } catch (error) {
-    console.error("Помилка при отриманні списку запитів", error);
+    console.error(
+      "Помилка при отриманні списку запитів та видаленні запиту",
+      error
+    );
+    throw error;
   }
 };
 
 export const clearRequests = async (roomName) => {
   try {
-    Room.updateOne({ roomName }, { $set: { requests: [] } });
+    await Room.updateOne({ roomName }, { $set: { requests: [] } });
   } catch (error) {
     console.error("Помилка при очищенні запитів", error);
+  }
+};
+
+export const getFirstActiveUser = async (roomName) => {
+  try {
+    const room = await Room.findOne({ roomName });
+    if (!room) console.error("Не знайдено такої кімнати");
+    const activeUser = room.participants.find(
+      (participant) => participant.active
+    );
+    if (!activeUser) return null;
+    return activeUser.userName;
+  } catch (error) {
+    console.error("Активного користувача не знайдено", error);
   }
 };

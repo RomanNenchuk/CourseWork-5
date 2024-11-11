@@ -23,8 +23,9 @@ import {
   writeSymmetricKey,
   addRequest,
   getSymmetricKey,
-  getRequests,
+  getRequestsAndDeleteMyself,
   clearRequests,
+  getFirstActiveUser,
 } from "../controllers/roomController.js";
 import {
   setMessage,
@@ -96,7 +97,7 @@ const chatSocket = (io) => {
         // Повідомлення для користувача, що приєднався
         socket.emit(
           "message",
-          buildMsg("Admin", `You have joined the ${userName} chat room`)
+          buildMsg("Admin", `You have joined the ${roomName} chat room`)
         );
 
         // Оновлення списку користувачів у кімнаті
@@ -112,8 +113,10 @@ const chatSocket = (io) => {
         }
 
         // коли я додався до кімнати, то отримую список користувачів,
-        // які хочуть, щоб я поділився своїм симетричним ключем
-        const requests = await getRequests(roomName);
+        // які хочуть, щоб я поділився своїм симетричним ключем, причому
+        // оскільки я також додавався, то мене слід видалити
+        let requests = await getRequestsAndDeleteMyself(userName, roomName);
+
         if (requests) {
           socket.emit("requestQuery", requests);
           await clearRequests(roomName);
@@ -255,6 +258,8 @@ const chatSocket = (io) => {
         // тому що нам не треба ще раз додавати того, хто створив кімнату
         if (!isAdmin) {
           await addUserToRoom(roomName, userName);
+          console.error("JKJKJKJKJKJKJKJKJKJK");
+
           const userID = (await getUserByName(userName)).socketID;
           await writeSymmetricKey(userName, roomName, encryptedSymmetricKey);
           io.to(userID).emit("setSymmetricKey");
@@ -366,9 +371,16 @@ const chatSocket = (io) => {
 
           // якщо користувач не має симетричного ключа, то я відсилаю запит на приєднання
           await addRequest(userName, roomName, publicKey);
-          socket.broadcast
-            .to(user.currentRoom)
-            .emit("getSymmetricKey", userName, publicKey);
+          const userID = (
+            await getUserByName(await getFirstActiveUser(roomName))
+          ).socketID;
+
+          // можливо я надсилаю повідомлення самому собі
+          if (userID !== socket.id) {
+            socket.broadcast
+              .to(userID)
+              .emit("getSymmetricKey", userName, publicKey);
+          }
           return;
         }
       }

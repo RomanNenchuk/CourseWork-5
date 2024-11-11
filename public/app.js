@@ -413,7 +413,12 @@ const deleteMsg = (room, id) => {
   socket.emit("deleteMessage", { room, id });
 };
 
+let count = 0;
+let count2 = 0;
 async function enterRoom(isAdmin) {
+  count++;
+  console.log("count" + count);
+
   if (nameInput.value && chatRoom.value) {
     const privateKey = localStorage.getItem(nameInput.value);
 
@@ -455,7 +460,11 @@ async function enterRoom(isAdmin) {
     // if (!symmetricKey && hasPrivate) {
     //   socket.emit("checkSymmetricKey", nameInput.value, chatRoom.value);
     // }
+
     switchOptions();
+
+    count2++;
+    console.log("count2" + count2);
 
     socket.emit("enterRoom", {
       userName: nameInput.value,
