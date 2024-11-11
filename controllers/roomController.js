@@ -104,13 +104,30 @@ export const verifyRoomPassword = async (roomName, password) => {
 // Додати користувача до кімнати
 export const addUserToRoom = async (roomName, userName) => {
   try {
-    console.log("\n\n\n\n\n\n\njjjjjjj\n\n");
+    const room = await Room.findOne({ roomName });
 
+    if (!room) {
+      throw new Error("Кімнату не знайдено");
+    }
+
+    // Перевірка, чи існує користувач у списку учасників
+    const userExists = room.participants.some(
+      (participant) => participant.userName === userName
+    );
+
+    if (userExists) {
+      console.log("Користувач вже є у кімнаті");
+      return room; // Повертаємо поточний стан кімнати, якщо користувач вже є
+    }
+
+    // Додаємо користувача, якщо його немає
     const updatedRoom = await Room.findOneAndUpdate(
       { roomName },
       { $push: { participants: { userName, active: true } } },
       { new: true, useFindAndModify: false }
     );
+
+    return updatedRoom; // Повертаємо оновлену кімнату з новим учасником
   } catch (error) {
     console.error("Помилка при додаванні користувача до кімнати:", error);
   }

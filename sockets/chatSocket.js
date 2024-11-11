@@ -352,6 +352,87 @@ const chatSocket = (io) => {
         // }
       }
     });
+
+    socket.on(
+      "sendRequest",
+      async (
+        userName,
+        roomName,
+        userPassword,
+        roomPassword,
+        adminEmail,
+        publicKey,
+        hasPrivate
+      ) => {
+        const userIsRegistered = await isRegistered(userName);
+
+        let user;
+        if (!userIsRegistered) {
+          user = await registerUser(
+            userName,
+            socket.id,
+            roomName,
+            userPassword
+          );
+        } else {
+          // оновлюємо поточну кімнату користувача
+          user = await updateUser(userName, socket.id, roomName);
+        }
+
+        if (!hasPrivate) {
+          // якщо в користувача не було пари ключів, і я перегенерував, то
+          // треба зберегти новий публічний ключ в базі даних
+          await updatePublicKey(userName, publicKey);
+        }
+
+        // Перевірка існування кімнати
+        const alreadyExists = await roomExists(roomName);
+        if (!alreadyExists) {
+          await createRoomWithUser(
+            roomName,
+            userName,
+            roomPassword,
+            adminEmail
+          );
+          socket.emit("createSymmetricKey", publicKey, true);
+          return;
+        }
+
+        // якщо кімната існує
+        if (alreadyExists) {
+          // якщо користувач не мав симетричного ключа в local storage і мав приватний
+          // (це для випадку, коли користувач проситься до кімнати, і його додали)
+          if (hasPrivate) {
+            const setSymmetric = await getSymmetricKey(userName, roomName);
+            // якщо виявиться, що його до кімнати вже хтось додав, то він перезайде в кімнату,
+            // і вже при цьому матиме і симетричний ключ, і приватний ключ
+            if (setSymmetric) {
+              socket.emit("checkSymmetricKey", setSymmetric);
+              return;
+            }
+          }
+
+          // Перевірка, чи був користувач колись у цій кімнаті
+          if (await wasInRoom(userName, roomName)) {
+            await setUserActivate(userName, roomName);
+          } else {
+            // оскільки користувач вже пройшов перевірку на правильність пароля,
+            // то додаю користувача до кімнати
+
+            await addUserToRoom(roomName, userName);
+          }
+
+          // якщо користувач не має симетричного ключа, то я відсилаю запит на приєднання
+          if (true) {
+            await addRequest(userName, roomName, publicKey);
+            socket.broadcast
+              .to(user.currentRoom)
+              .emit("getSymmetricKey", userName, publicKey);
+            return;
+          }
+        }
+      }
+    );
   });
 };
 
