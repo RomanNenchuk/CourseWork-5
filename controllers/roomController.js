@@ -123,7 +123,10 @@ export const addUserToRoom = async (roomName, userName) => {
     // Додаємо користувача, якщо його немає
     const updatedRoom = await Room.findOneAndUpdate(
       { roomName },
-      { $push: { participants: { userName, active: true } } },
+
+      // тут було true, встановив у false
+
+      { $push: { participants: { userName, active: false } } },
       { new: true, useFindAndModify: false }
     );
 

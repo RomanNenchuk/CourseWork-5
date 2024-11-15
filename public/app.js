@@ -255,14 +255,6 @@ async function encryptMessage(message, symmetricKey) {
   };
 }
 
-function isBase64(str) {
-  try {
-    return btoa(atob(str)) === str;
-  } catch (err) {
-    return false;
-  }
-}
-
 async function decryptMessage(encryptedData, symmetricKey) {
   console.log("Після завантаження:");
   console.log("encryptedMessage:", encryptedData.encryptedMessage);
