@@ -259,6 +259,7 @@ const chatSocket = (io) => {
         if (!isAdmin) {
           await addUserToRoom(roomName, userName);
           console.error("JKJKJKJKJKJKJKJKJKJK");
+          console.log("Write symmetric key for " + userName);
 
           const userID = (await getUserByName(userName)).socketID;
           await writeSymmetricKey(userName, roomName, encryptedSymmetricKey);

@@ -1,5 +1,3 @@
-// Browser has a built in web socket class
-// It is instantiated by the URL that points to the server, but we use web socket protocol
 // const socket = io("ws://localhost:3500");
 const socket = io();
 
@@ -336,7 +334,12 @@ socket.on("requestQuery", async (requests) => {
   );
   const isAdmin = false;
   requests.forEach(async (request) => {
-    writeSymmetricKey(isAdmin, request.name, request.publicKey, symmetricKey);
+    writeSymmetricKey(
+      isAdmin,
+      request.userName,
+      request.publicKey,
+      symmetricKey
+    );
   });
 });
 
@@ -519,21 +522,6 @@ socket.on("createPublicPrivateKeys", async () => {
 });
 
 socket.on("createSymmetricKey", async (userPublicKey, isAdmin) => {
-  // let publicKey;
-  // if (!(await checkPrivateKey())) {
-  //   publicKey = await generateKeyPair();
-  //   console.log("ALARM " + publicKey);
-  //   const userName = nameInput.value;
-  //   const roomName = chatRoom.value;
-  //   socket.emit("updateKeys", { userName, publicKey, roomName });
-  // } else {
-  // publicKey = userPublicKey;
-  // }
-
-  // якщо кімната не існує, і її створюють
-
-  console.log("\n\n\n___________createSymmetricKey________\n\n\n");
-
   adminEmail.classList.add("hidden");
   email.value = "";
   console.log("Created SymmetricKey");
@@ -728,12 +716,6 @@ socket.on("message", async (data) => {
             updatedMsgInput.value,
             symmetricKey
           );
-
-          // socket.emit("message", {
-          //   name: nameInput.value,
-          //   text: encryptedMessage.encryptedMessage,
-          //   iv: encryptedMessage.iv,
-          // });
 
           socket.emit("updateMessage", {
             room: chatRoom.value,
