@@ -153,9 +153,9 @@ const chatSocket = (io) => {
           users: await getUsersInRoom(user.currentRoom),
         });
 
-        const roomInfo = await getRoomsByNameAndCount("", 1);
+        const roomInfo = await getRoomsByNameAndCount("", 0);
         if (roomInfo.length) {
-          socket.emit("findRoom", roomInfo);
+          io.emit("findRoom", roomInfo);
         }
 
         console.log(`User ${socket.id} disconnected`);

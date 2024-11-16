@@ -805,8 +805,8 @@ socket.on("askForEmail", () => {
 function findRooms(e) {
   e.preventDefault();
   const roomName = findRoomByName.value;
-  const participNumber = findRoomByCount.value;
-  if (roomName && participNumber > 0) {
+  const participNumber = Number(findRoomByCount.value);
+  if (participNumber > 0) {
     socket.emit("findRoom", { roomName, participNumber });
   }
 }
