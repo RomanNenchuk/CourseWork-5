@@ -38,13 +38,6 @@ helpIcon.addEventListener("click", getAdminEmail);
 
 let publicKey;
 
-async function checkPrivateKey() {
-  if (localStorage.getItem(nameInput.value)) {
-    return true;
-  }
-  return false;
-}
-
 async function generateKeyPair() {
   const keyPair = await window.crypto.subtle.generateKey(
     {
@@ -411,9 +404,6 @@ const deleteMsg = (room, id) => {
 let count = 0;
 let count2 = 0;
 async function enterRoom(isAdmin) {
-  count++;
-  console.log("count" + count);
-
   if (nameInput.value && chatRoom.value) {
     const privateKey = localStorage.getItem(nameInput.value);
 
@@ -783,7 +773,6 @@ socket.on("passwordConfirmed", async (data) => {
   // коли пройшла автентифікація кімнати
   if (data.message === "room") {
     hideErrors();
-    console.log(await checkPrivateKey());
 
     await enterRoom(data.admin);
   }
@@ -792,6 +781,7 @@ socket.on("passwordConfirmed", async (data) => {
 socket.on("findRoom", (roomInfo) => {
   roomList.textContent = "";
   if (roomInfo.length) {
+    foundRooms.innerHTML = "";
     roomInfo.forEach((room, i) => {
       const li = document.createElement("li");
       li.textContent = `${room.roomName} (${room.totalParticipants} participants)`;

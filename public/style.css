@@ -33,7 +33,10 @@ main {
 
 .rooms {
   width: 40%;
-  height: 70%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
   /* border-right: 1px solid #eee; */
   padding-right: 10px;
   position: relative;
@@ -50,7 +53,7 @@ main {
 
 form {
   width: 100%;
-  margin: auto;
+  /* margin: auto; */
   /* max-width: 600px; */
   display: flex;
   flex-flow: row nowrap;
@@ -322,11 +325,13 @@ button {
 }
 
 .list {
-  height: 100%;
+  max-height: 100%;
   margin-top: 15px;
   list-style-type: none;
   overflow: auto;
   overflow-x: hidden;
+  flex-grow: 1;
+  flex-shrink: 1;
 }
 
 .list li {

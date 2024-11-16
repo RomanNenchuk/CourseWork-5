@@ -26,6 +26,7 @@ import {
   getRequestsAndDeleteMyself,
   clearRequests,
   getFirstActiveUser,
+  checkActivity,
 } from "../controllers/roomController.js";
 import {
   setMessage,
@@ -75,11 +76,13 @@ const chatSocket = (io) => {
           socket.leave(prevRoom);
           // socket.emit("leftRoom");
 
-          await setUserUnactivate(userName, prevRoom);
-          io.to(prevRoom).emit(
-            "message",
-            buildMsg("Admin", `${userName} has left the room`)
-          );
+          if (await checkActivity(userName, prevRoom)) {
+            await setUserUnactivate(userName, prevRoom);
+            io.to(prevRoom).emit(
+              "message",
+              buildMsg("Admin", `${userName} has left the room`)
+            );
+          }
         }
 
         // Оновлення списку кімнат для всіх

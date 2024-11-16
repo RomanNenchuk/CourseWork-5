@@ -1,4 +1,5 @@
 import Room from "../models/Room.js";
+import bcrypt from "bcrypt";
 
 // Отримати список користувачів у кімнаті
 export const getUsersInRoom = async (roomName) => {
@@ -88,15 +89,25 @@ export const wasInRoom = async (username, roomName) => {
   }
 };
 
-export const verifyRoomPassword = async (roomName, password) => {
+// Перевірка паролю кімнати
+export const verifyRoomPassword = async (roomName, enteredPassword) => {
   try {
     const room = await Room.findOne({ roomName });
-    if (!room || room.roomPassword !== password) {
+
+    if (!room) {
+      // Якщо кімната не знайдена, повертаємо false
       return false;
     }
-    return true;
+
+    // Порівнюємо введений пароль з хешем паролю кімнати
+    const isPasswordCorrect = await bcrypt.compare(
+      enteredPassword,
+      room.roomPassword
+    );
+
+    return isPasswordCorrect;
   } catch (error) {
-    console.error("Помилка під час перевірки:", error);
+    console.error("Помилка під час перевірки паролю кімнати:", error);
     return false;
   }
 };
@@ -144,16 +155,24 @@ export const createRoomWithUser = async (
   adminEmail
 ) => {
   try {
+    // Генерація солі та хешування паролю кімнати
+    const saltRounds = 10; // Кількість раундів для генерації солі
+    const hashedRoomPassword = await bcrypt.hash(roomPassword, saltRounds);
+
+    // Створення нової кімнати з хешованим паролем
     const newRoom = new Room({
       roomName,
-      roomPassword,
+      roomPassword: hashedRoomPassword, // Зберігаємо хеш паролю кімнати
       participants: [{ userName, active: true }],
       adminEmail,
     });
 
+    // Збереження кімнати в базі даних
     const savedRoom = await newRoom.save();
+    return savedRoom;
   } catch (error) {
     console.error("Помилка при створенні кімнати:", error);
+    throw error;
   }
 };
 
@@ -285,4 +304,26 @@ export const getFirstActiveUser = async (roomName) => {
   } catch (error) {
     console.error("Активного користувача не знайдено", error);
   }
+};
+
+export const checkActivity = async (userName, roomName) => {
+  try {
+    const room = await Room.findOne({ roomName });
+
+    // Якщо кімната не знайдена, повертаємо false
+    if (!room) {
+      return false;
+    }
+
+    // Знаходимо учасника за його ім'ям в списку учасників
+    const participant = room.participants.find((p) => p.userName === userName);
+
+    // Якщо учасник не знайдений або він не активний, повертаємо false
+    if (!participant || !participant.active) {
+      return false;
+    }
+
+    // Якщо учасник знайдений і активний, повертаємо true
+    return true;
+  } catch (error) {}
 };
