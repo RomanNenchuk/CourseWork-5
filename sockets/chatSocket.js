@@ -221,7 +221,7 @@ const chatSocket = (io) => {
     });
 
     socket.on("deleteMessage", async ({ room, id }) => {
-      deleteMessage(room, id);
+      await deleteMessage(room, id);
       socket.broadcast.to(room).emit("deleteMessage", id);
     });
 
@@ -278,29 +278,6 @@ const chatSocket = (io) => {
 
       if (symmetricKey) {
         socket.emit("checkSymmetricKey", symmetricKey);
-        // const prevMessages = await getPrevMessages(roomName);
-        // if (prevMessages) {
-        //   socket.emit("roomMessages", prevMessages);
-        // }
-        // io.to(roomName).emit("userList", {
-        //   users: await getUsersInRoom(roomName),
-        // });
-        // const roomInfo = await getRoomsByNameAndCount("", 1);
-        // if (roomInfo.length) {
-        //   io.emit("findRoom", roomInfo);
-        // }
-        // socket.emit(
-        //   "message",
-        //   buildMsg("Admin", `You have joined the ${roomName} chat room`)
-        // );
-
-        // Оновлення списку користувачів у попередній кімнаті
-        // Спершу без
-        // if (prevRoom) {
-        //   io.to(prevRoom).emit("userList", {
-        //     users: await getUsersInRoom(prevRoom),
-        //   });
-        // }
       }
     });
 

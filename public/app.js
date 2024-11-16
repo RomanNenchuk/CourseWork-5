@@ -1,4 +1,3 @@
-// const socket = io("ws://localhost:3500");
 const socket = io();
 
 const msgInput = document.getElementById("message");
@@ -303,8 +302,6 @@ function arrayBufferToBase64(buffer) {
 
 //
 
-//
-
 function getAdminEmail() {
   if (chatRoom.value) {
     socket.emit("getAdminEmail", chatRoom.value);
@@ -401,8 +398,6 @@ const deleteMsg = (room, id) => {
   socket.emit("deleteMessage", { room, id });
 };
 
-let count = 0;
-let count2 = 0;
 async function enterRoom(isAdmin) {
   if (nameInput.value && chatRoom.value) {
     const privateKey = localStorage.getItem(nameInput.value);
@@ -432,7 +427,6 @@ async function enterRoom(isAdmin) {
         hasPrivate
       );
       requestSent.classList.remove("hidden");
-      // функція, яка відображає щось на фронті
       return;
     }
 
@@ -440,16 +434,7 @@ async function enterRoom(isAdmin) {
     requestSent.classList.add("hidden");
     document.querySelector(".chat-display").innerHTML = "";
 
-    // якщо нема симетричного ключа, але є приватний, то можемо перевірити, чи нема
-    // зашифрованого симетричного ключ з бази даних
-    // if (!symmetricKey && hasPrivate) {
-    //   socket.emit("checkSymmetricKey", nameInput.value, chatRoom.value);
-    // }
-
     switchOptions();
-
-    count2++;
-    console.log("count2" + count2);
 
     socket.emit("enterRoom", {
       userName: nameInput.value,
@@ -463,7 +448,6 @@ async function createPublicPrivateKeys() {
   const publicKey = await generateKeyPair();
   const userName = nameInput.value;
   const roomName = chatRoom.value;
-  // socket.emit("updateKeys", { userName, publicKey, roomName });
   return publicKey;
 }
 
@@ -566,12 +550,10 @@ msgInput.addEventListener("keypress", () => {
   socket.emit("activity", nameInput.value);
 });
 
-//
-
 socket.on("deleteMessage", (id) => {
-  const temp = document.getElementById(id);
-  if (temp) {
-    temp.classList.add("hidden");
+  const element = document.getElementById(id);
+  if (element) {
+    element.classList.add("hidden");
   }
 });
 
@@ -705,7 +687,6 @@ socket.on("message", async (data) => {
             updatedMsg: encryptedMessage,
             iv: encryptedMessage.iv,
           });
-          // postTextDiv.innerText = updatedMsgInput.value;
           updatedMsgInput.value = "";
           editMessageForm.classList.add("hidden");
           sendMessageForm.classList.remove("hidden");
@@ -745,12 +726,7 @@ socket.on("activity", (name) => {
 });
 
 socket.on("userList", ({ users }) => {
-  // console.log("alle users:", users);
   showUsers(users);
-});
-
-socket.on("roomList", ({ rooms }) => {
-  // showRooms(rooms);
 });
 
 socket.on("wrongPassword", (data) => {
@@ -820,25 +796,6 @@ function showUsers(users) {
       if (users.length > 1 && i !== users.length - 1) {
         usersList.textContent += ", ";
       }
-    });
-  }
-}
-
-function showRooms(rooms) {
-  roomList.textContent = "";
-  console.log("Hello");
-
-  if (rooms) {
-    // roomList.innerHTML = "<em>Active rooms: </em>";
-    rooms.forEach((room, i) => {
-      const li = document.createElement("li");
-      li.innerText = room;
-      console.log(`on room: ${li.innerText}`);
-      li.addEventListener("click", () => {
-        chatRoom.innerText = li.innerText;
-        console.log(`Clicked on room: ${li.innerText}`);
-      });
-      roomList.appendChild(li);
     });
   }
 }
