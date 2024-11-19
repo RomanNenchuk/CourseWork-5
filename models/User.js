@@ -6,7 +6,6 @@ const userSchema = new mongoose.Schema({
   currentRoom: { type: String, required: true },
   password: { type: String, required: true },
   publicKey: { type: String, required: false },
-  roomList: [{ roomName: { type: String } }],
 });
 
 const User = mongoose.model("User", userSchema);

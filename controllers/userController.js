@@ -72,7 +72,6 @@ export const registerUser = async (name, socketID, room, password) => {
       socketID,
       currentRoom: room,
       password: hashedPassword, // Зберігаємо хешований пароль
-      roomList: [{ roomName: room }],
     });
 
     // Збереження в базі даних
@@ -91,7 +90,6 @@ export const updateUser = async (name, socketID, room) => {
       { name },
       {
         $set: { socketID, currentRoom: room }, // Оновити socketID та поточну кімнату
-        $addToSet: { roomList: { roomName: room } }, // Додати кімнату до roomList, якщо її ще немає
       },
       { new: true, select: "name socketID currentRoom" }
     );
