@@ -33,8 +33,8 @@ import {
   getPrevMessages,
   deleteMessage,
   updateMessage,
+  buildMsg,
 } from "../controllers/messageController.js";
-import { buildMsg } from "../utils/messageBuilder.js";
 
 const chatSocket = (io) => {
   io.on("connection", async (socket) => {

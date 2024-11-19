@@ -1,5 +1,16 @@
 import Message from "../models/RoomMessages.js";
 
+export const buildMsg = (name, text, iv) => ({
+  name,
+  text,
+  iv,
+  time: new Intl.DateTimeFormat("default", {
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+  }).format(new Date()),
+});
+
 // Встановити повідомлення у кімнаті
 export const setMessage = async (msg, room) => {
   try {
