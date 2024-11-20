@@ -205,8 +205,6 @@ async function exportPublicKeyToBase64(publicKey) {
 }
 
 async function importPublicKeyFromBase64(base64PublicKey) {
-  console.log("__________", base64PublicKey, "_______________");
-
   const binaryDer = Uint8Array.from(atob(base64PublicKey), (c) =>
     c.charCodeAt(0)
   );
@@ -248,13 +246,7 @@ async function encryptMessage(message, symmetricKey) {
 }
 
 async function decryptMessage(encryptedData, symmetricKey) {
-  console.log("Після завантаження:");
-  console.log("encryptedMessage:", encryptedData.encryptedMessage);
-  console.log("iv:", encryptedData.iv);
-
   // Перетворюємо зашифроване повідомлення з Base64 на масив байтів
-  console.log("===========================");
-
   const encryptedArray = new Uint8Array(
     atob(encryptedData.encryptedMessage)
       .split("")
