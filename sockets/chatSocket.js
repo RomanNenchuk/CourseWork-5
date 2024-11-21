@@ -5,6 +5,7 @@ import {
   registerUser,
   verifyUserPassword,
   updateUser,
+  updateSocketID,
   setUserActivate,
   setUserUnactivate,
   updatePublicKey,
@@ -167,6 +168,11 @@ const chatSocket = (io) => {
     socket.on(
       "verifyPasswords",
       async ({ name, userPassword, room, roomPassword, adminEmail }) => {
+        const roomCreated = await roomExists(room);
+        if (!roomCreated && !adminEmail) {
+          socket.emit("askForEmail");
+          return;
+        }
         // Якщо користувач зареєстрований, перевіряємо пароль
         if (await isRegistered(name)) {
           if (!(await verifyUserPassword(name, userPassword))) {
@@ -181,7 +187,7 @@ const chatSocket = (io) => {
         }
 
         // Якщо кімната існує, перевіряємо пароль
-        if (await roomExists(room)) {
+        if (roomCreated) {
           // Якщо користувач ще не був у кімнаті, перевіряємо пароль кімнати
           if (
             !(await wasInRoom(name, room)) &&
@@ -196,9 +202,7 @@ const chatSocket = (io) => {
           // Якщо кімната не існує, то вважаємо її пароль правильний
           if (adminEmail) {
             socket.emit("passwordConfirmed", { message: "room", admin: true });
-            return;
           }
-          socket.emit("askForEmail");
         }
       }
     );
@@ -252,10 +256,6 @@ const chatSocket = (io) => {
       socket.emit("getAdminEmail", await getAdminEmail(chatRoom));
     });
 
-    socket.on("updateKeys", async ({ userName, publicKey, roomName }) => {
-      await updatePublicKey(userName, publicKey);
-    });
-
     socket.on(
       "writeSymmetricKey",
       async ({ userName, roomName, encryptedSymmetricKey, isAdmin }) => {
@@ -271,15 +271,6 @@ const chatSocket = (io) => {
         await writeSymmetricKey(userName, roomName, encryptedSymmetricKey);
       }
     );
-
-    socket.on("checkSymmetricKey", async (userName, roomName) => {
-      const symmetricKey = await getSymmetricKey(userName, roomName);
-      // console.error(symmetricKey);
-
-      if (symmetricKey) {
-        socket.emit("checkSymmetricKey", symmetricKey);
-      }
-    });
 
     socket.on(
       "sendRequest",
@@ -303,7 +294,11 @@ const chatSocket = (io) => {
             userPassword
           );
         } else {
-          publicKey = await getPublicKey(userName);
+          await updateSocketID(userName, socket.id);
+          // якщо він не генерував нового публічного ключа
+          if (!publicKey) {
+            publicKey = await getPublicKey(userName);
+          }
         }
 
         if (!hasPrivate) {
@@ -344,19 +339,19 @@ const chatSocket = (io) => {
             await addUserToRoom(roomName, userName);
           }
 
-          // якщо користувач не має симетричного ключа, то я відсилаю запит на приєднання
-          await addRequest(userName, roomName, publicKey);
           const userID = (
             await getUserByName(await getFirstActiveUser(roomName))
           )?.socketID;
-
           // можливо я надсилаю повідомлення самому собі
           if (userID && userID !== socket.id) {
             socket.broadcast
               .to(userID)
               .emit("getSymmetricKey", userName, publicKey);
+            return;
           }
-          return;
+
+          // якщо користувач не має симетричного ключа, то я відсилаю запит на приєднання
+          await addRequest(userName, roomName, publicKey);
         }
       }
     );

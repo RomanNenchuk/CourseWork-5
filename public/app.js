@@ -223,7 +223,25 @@ async function importPublicKeyFromBase64(base64PublicKey) {
   return publicKey;
 }
 
-async function encryptMessage(message, symmetricKey) {
+async function encryptMessage(message) {
+  // Отримуємо симетричний ключ для конкретної кімнати
+  const base64SymmetricKey = localStorage.getItem(
+    `${nameInput.value} ${chatRoom.value}`
+  );
+  if (!base64SymmetricKey) {
+    console.error("Symmetric key not found for room:", chatRoom.value);
+    return;
+  }
+
+  const arrayBufferSymmetricKey = base64ToArrayBuffer(base64SymmetricKey);
+  const symmetricKey = await crypto.subtle.importKey(
+    "raw",
+    arrayBufferSymmetricKey,
+    { name: "AES-GCM" },
+    true,
+    ["encrypt", "decrypt"]
+  );
+
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encodedMessage = new TextEncoder().encode(message);
 
@@ -349,29 +367,7 @@ const hideErrors = () => {
 const sendMessage = async (e) => {
   e.preventDefault();
   if (nameInput.value && msgInput.value && chatRoom.value) {
-    // Отримуємо симетричний ключ для конкретної кімнати
-    const base64SymmetricKey = localStorage.getItem(
-      `${nameInput.value} ${chatRoom.value}`
-    );
-    if (!base64SymmetricKey) {
-      console.error("Symmetric key not found for room:", chatRoom.value);
-      return;
-    }
-
-    const arrayBufferSymmetricKey = base64ToArrayBuffer(base64SymmetricKey);
-    const symmetricKey = await crypto.subtle.importKey(
-      "raw",
-      arrayBufferSymmetricKey,
-      { name: "AES-GCM" },
-      true,
-      ["encrypt", "decrypt"]
-    );
-
-    const encryptedMessage = await encryptMessage(msgInput.value, symmetricKey);
-
-    console.log("\n\n\nПеред збереженням:");
-    console.log("encryptedMessage:", encryptedMessage);
-    console.log("iv:", encryptedMessage.iv, "\n\n");
+    const encryptedMessage = await encryptMessage(msgInput.value);
 
     // Відправляємо зашифроване повідомлення на сервер
     socket.emit("message", {
@@ -522,8 +518,6 @@ function verifyPasswords(e) {
       roomPassword: roomPassword.value,
       adminEmail: email.value,
     });
-    console.log(adminEmail);
-    console.log(email.value);
   }
 }
 
@@ -650,28 +644,7 @@ socket.on("message", async (data) => {
         const editMessage = async (e) => {
           e.preventDefault();
 
-          const base64SymmetricKey = localStorage.getItem(
-            `${nameInput.value} ${chatRoom.value}`
-          );
-          if (!base64SymmetricKey) {
-            console.error("Symmetric key not found for room:", chatRoom.value);
-            return;
-          }
-
-          const arrayBufferSymmetricKey =
-            base64ToArrayBuffer(base64SymmetricKey);
-          const symmetricKey = await crypto.subtle.importKey(
-            "raw",
-            arrayBufferSymmetricKey,
-            { name: "AES-GCM" },
-            true,
-            ["encrypt", "decrypt"]
-          );
-
-          const encryptedMessage = await encryptMessage(
-            updatedMsgInput.value,
-            symmetricKey
-          );
+          const encryptedMessage = await encryptMessage(updatedMsgInput.value);
 
           socket.emit("updateMessage", {
             room: chatRoom.value,

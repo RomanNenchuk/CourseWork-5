@@ -105,6 +105,27 @@ export const updateUser = async (name, socketID, room) => {
   }
 };
 
+export const updateSocketID = async (name, socketID) => {
+  try {
+    const updatedUser = await User.findOneAndUpdate(
+      { name }, // Пошук користувача за ім'ям
+      {
+        $set: { socketID }, // Оновлення лише socketID
+      },
+      { new: true, select: "name socketID" } // Повертаємо лише ім'я та socketID
+    );
+
+    if (!updatedUser) {
+      throw new Error("Користувача не знайдено");
+    }
+
+    return updatedUser;
+  } catch (error) {
+    console.error("Помилка при оновленні socketID користувача:", error);
+    throw error;
+  }
+};
+
 // Активувати користувача у кімнаті
 export const setUserActivate = async (name, room) => {
   try {

@@ -5,11 +5,9 @@ const connectDB = async () => {
   try {
     await mongoose.connect("mongodb://127.0.0.1:27017/mydatabase");
     console.log("Connected to DB");
-
-    // Очистити активність користувачів
     await Room.updateMany(
-      { "participants.active": true }, // Знаходимо всі кімнати, де учасники активні
-      { $set: { "participants.$[].active": false } } // Оновлюємо статус активності всіх учасників
+      { "participants.active": true },
+      { $set: { "participants.$[].active": false } }
     );
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
