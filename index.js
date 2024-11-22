@@ -35,7 +35,8 @@ const expressServer = app.listen(PORT, HOST, () =>
 // Підключення Socket.IO
 const io = new Server(expressServer, {
   cors: {
-    origin: process.env.NODE_ENV === "production" ? false : "*",
+    origin: "*",
+    methods: ["GET", "POST"],
   },
 });
 

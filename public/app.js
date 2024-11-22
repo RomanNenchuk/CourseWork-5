@@ -355,6 +355,13 @@ function switchOptions() {
 settings.addEventListener("click", switchOptions);
 
 signOut.addEventListener("click", () => {
+  const name = nameInput.value;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.includes(name)) {
+      localStorage.removeItem(key);
+    }
+  }
   socket.disconnect();
   location.reload();
 });
@@ -748,7 +755,7 @@ function findRooms(e) {
   const roomName = findRoomByName.value;
   const participNumber = Number(findRoomByCount.value);
   if (participNumber > 0) {
-    socket.emit("findRoom", { roomName, participNumber });
+    socket.emit("findRoom", roomName, participNumber);
   }
 }
 

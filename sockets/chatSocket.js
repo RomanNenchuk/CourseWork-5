@@ -110,7 +110,6 @@ const chatSocket = (io) => {
         // Оновлення списку користувачів у кімнаті
 
         const usersInRoom = await getUsersInRoom(roomName);
-        console.error(`Request for ${userName} in ${roomName}\n${usersInRoom}`);
         io.to(roomName).emit("userList", {
           users: usersInRoom,
         });
@@ -247,7 +246,10 @@ const chatSocket = (io) => {
       }
     });
 
-    socket.on("findRoom", async ({ roomName, participNumber }) => {
+    socket.on("findRoom", async (roomName, participNumber) => {
+      if (!participNumber) {
+        participNumber = 0;
+      }
       const roomInfo = await getRoomsByNameAndCount(roomName, participNumber);
       socket.emit("findRoom", roomInfo);
     });
