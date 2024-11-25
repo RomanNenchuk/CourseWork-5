@@ -264,7 +264,6 @@ const chatSocket = (io) => {
         // тому що нам не треба ще раз додавати того, хто створив кімнату
         if (!isAdmin) {
           await addUserToRoom(roomName, userName);
-          console.log("Write symmetric key for " + userName);
           const userID = (await getUserByName(userName)).socketID;
           await writeSymmetricKey(userName, roomName, encryptedSymmetricKey);
           io.to(userID).emit("setSymmetricKey");

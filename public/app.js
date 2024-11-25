@@ -67,10 +67,6 @@ async function generateKeyPair() {
     String.fromCharCode(...new Uint8Array(privateKey))
   );
   localStorage.setItem(nameInput.value, privateKeyBase64);
-
-  console.log("Public Key (Base64):", publicKeyBase64);
-  console.log("Private Key saved to localStorage.");
-
   return publicKeyBase64;
 }
 
@@ -218,8 +214,6 @@ async function importPublicKeyFromBase64(base64PublicKey) {
     true,
     ["encrypt"]
   );
-  console.log(publicKey);
-
   return publicKey;
 }
 
@@ -485,7 +479,6 @@ socket.on("createPublicPrivateKeys", async () => {
 socket.on("createSymmetricKey", async (userPublicKey, isAdmin) => {
   adminEmail.classList.add("hidden");
   email.value = "";
-  console.log("Created SymmetricKey");
   // якщо користувач є творцем кімнати, то він також генерує симетричний ключ
   const symmetricKey = await generateSymmetricKey();
 
@@ -679,7 +672,6 @@ socket.on("message", async (data) => {
 socket.on("roomMessages", (messages) => {
   const listener = socket.listeners("message")[0]; // Отримуємо перший (і єдиний) слухач
   if (listener) {
-    console.log(messages);
     messages.forEach((message) => {
       listener(message);
     });

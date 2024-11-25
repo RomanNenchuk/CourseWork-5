@@ -196,7 +196,7 @@ export const writeSymmetricKey = async (
     const room = await Room.findOne({ roomName });
 
     if (!room) {
-      throw new Error("Room not found");
+      throw new Error("Кімнату не знайдено");
     }
 
     // Знаходимо учасника кімнати за userName
@@ -205,19 +205,19 @@ export const writeSymmetricKey = async (
     );
 
     if (participantIndex === -1) {
-      throw new Error("User not found in the room");
+      throw new Error("Користувача не знайдено в кімнаті");
     }
 
     // Оновлюємо поле encryptedSymmetricKey для цього учасника
     room.participants[participantIndex].encryptedSymmetricKey =
       encryptedSymmetricKey;
-
     // Зберігаємо зміни в базі даних
     await room.save();
-
-    console.log("Encrypted symmetric key saved successfully");
   } catch (error) {
-    console.error("Error saving encrypted symmetric key:", error);
+    console.error(
+      "Помилка при збереженні зашифрованого симетричного ключа:",
+      error
+    );
   }
 };
 
@@ -232,9 +232,8 @@ export const addRequest = async (name, room, publicKey) => {
       },
       { new: true, upsert: true }
     );
-    console.log(`Request from ${name} added to room: ${room}`);
   } catch (error) {
-    console.error("Error adding request:", error);
+    console.error("Помилка при додаванні запиту:", error);
   }
 };
 
@@ -295,7 +294,10 @@ export const clearRequests = async (roomName) => {
 export const getFirstActiveUser = async (roomName) => {
   try {
     const room = await Room.findOne({ roomName });
-    if (!room) console.error("Не знайдено такої кімнати");
+    if (!room) {
+      console.error("Не знайдено такої кімнати");
+      return null;
+    }
     const activeUser = room.participants.find(
       (participant) => participant.active
     );
