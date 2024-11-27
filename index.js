@@ -33,11 +33,6 @@ const expressServer = app.listen(PORT, HOST, () =>
 );
 
 // Підключення Socket.IO
-const io = new Server(expressServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
+const io = new Server(expressServer);
 
 chatSocket(io);
