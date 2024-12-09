@@ -566,12 +566,12 @@ socket.on("message", async (data) => {
         ${
           name === nameInput.value
             ? `<span class="delete-button">
-                  <svg xmlns="http:
+                  <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="16" height="16" viewBox="0 0 30 30" style="fill:#FFFFFF;">
                     <path d="M 14.984375 2.4863281 A 1.0001 1.0001 0 0 0 14 3.5 L 14 4 L 8.5 4 A 1.0001 1.0001 0 0 0 7.4863281 5 L 6 5 A 1.0001 1.0001 0 1 0 6 7 L 24 7 A 1.0001 1.0001 0 1 0 24 5 L 22.513672 5 A 1.0001 1.0001 0 0 0 21.5 4 L 16 4 L 16 3.5 A 1.0001 1.0001 0 0 0 14.984375 2.4863281 z M 6 9 L 7.7929688 24.234375 C 7.9109687 25.241375 8.7633438 26 9.7773438 26 L 20.222656 26 C 21.236656 26 22.088031 25.241375 22.207031 24.234375 L 24 9 L 6 9 z"></path>
                   </svg>
                </span>
                <span class="edit-button">
-                  <svg xmlns="http:
+                  <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </span>
                `
@@ -612,7 +612,28 @@ socket.on("message", async (data) => {
         const editMessage = async (e) => {
           e.preventDefault();
 
-          const encryptedMessage = await encryptMessage(updatedMsgInput.value);
+          const base64SymmetricKey = localStorage.getItem(
+            `${nameInput.value} ${chatRoom.value}`
+          );
+          if (!base64SymmetricKey) {
+            console.error("Symmetric key not found for room:", chatRoom.value);
+            return;
+          }
+
+          const arrayBufferSymmetricKey =
+            base64ToArrayBuffer(base64SymmetricKey);
+          const symmetricKey = await crypto.subtle.importKey(
+            "raw",
+            arrayBufferSymmetricKey,
+            { name: "AES-GCM" },
+            true,
+            ["encrypt", "decrypt"]
+          );
+
+          const encryptedMessage = await encryptMessage(
+            updatedMsgInput.value,
+            symmetricKey
+          );
 
           socket.emit("updateMessage", {
             room: chatRoom.value,
@@ -623,7 +644,6 @@ socket.on("message", async (data) => {
           updatedMsgInput.value = "";
           editMessageForm.classList.add("hidden");
           sendMessageForm.classList.remove("hidden");
-
           editMessageForm.removeEventListener("submit", editMessage);
           applyChangeBtn.removeEventListener("click", editMessage);
         };
@@ -632,7 +652,6 @@ socket.on("message", async (data) => {
       }
     });
   }
-
   chatDisplay.scrollTop = chatDisplay.scrollHeight;
 });
 
