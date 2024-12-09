@@ -20,10 +20,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Підключення до бази даних
 connectDB().catch((err) => {
   console.error("Failed to connect to database, exiting...");
-  process.exit(1); // Завершення процесу у разі невдачі
+  process.exit(1);
 });
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -32,7 +31,6 @@ const expressServer = app.listen(PORT, HOST, () =>
   console.log(`Listening on port ${PORT}`)
 );
 
-// Підключення Socket.IO
 const io = new Server(expressServer);
 
 chatSocket(io);

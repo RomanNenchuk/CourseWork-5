@@ -11,7 +11,6 @@ export const buildMsg = (name, text, iv) => ({
   }).format(new Date()),
 });
 
-// Встановити повідомлення у кімнаті
 export const setMessage = async (msg, room) => {
   try {
     const roomMessages = await Message.findOne({ room });
@@ -39,7 +38,6 @@ export const setMessage = async (msg, room) => {
   }
 };
 
-// Отримати попередні повідомлення кімнати
 export const getPrevMessages = async (room) => {
   try {
     const roomMessages = await Message.findOne({ room });
@@ -54,19 +52,17 @@ export const getPrevMessages = async (room) => {
 
 export const deleteMessage = async (room, id) => {
   try {
-    // Знаходимо запис за кімнатою та видаляємо повідомлення з відповідним id
     const updatedMessage = await Message.findOneAndUpdate(
-      { room }, // Шукаємо запис за назвою кімнати
-      { $pull: { messages: { _id: id } } }, // Видаляємо повідомлення з масиву
-      { new: true } // Повертаємо оновлений документ після видалення
+      { room },
+      { $pull: { messages: { _id: id } } },
+      { new: true }
     );
 
-    // Перевірка, чи був запис оновлений
     if (!updatedMessage) {
       console.error("Повідомлення або кімната не знайдені.");
       return false;
     }
-    return true; // Видалення успішне
+    return true;
   } catch (error) {
     console.error("Помилка при видаленні повідомлення:", error);
     return false;
@@ -92,7 +88,7 @@ export const updateMessage = async (room, id, updatedMessage, iv) => {
       return null;
     }
 
-    return newMessage; // Повертаємо оновлене повідомлення, якщо потрібно
+    return newMessage;
   } catch (error) {
     console.error("Помилка при редагуванні повідомлення:", error);
   }
